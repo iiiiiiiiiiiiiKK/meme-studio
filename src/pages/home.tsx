@@ -1,0 +1,366 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ArrowRight,
+  ImagePlus,
+  Sparkles,
+  Zap,
+  FolderOpen,
+  ShieldCheck,
+  Cpu,
+  Wand2,
+  Layers as LayersIcon,
+  MousePointerClick,
+} from 'lucide-react';
+import { useUi } from '../state/ui';
+import { useLibrary } from '../state/library';
+import { STARTER_ITEMS, type StarterItem } from '../lib/starter';
+import { formatBytes } from '../lib/image';
+import { EmptyState, SectionHeader } from '../components/ui';
+import { assetUrl, useAssetUrl } from '../components/useAssetUrl';
+import type { StoredAsset } from '../lib/db';
+
+export function StarterThumb({ item, className }: { item: StarterItem; className?: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    item.draw(ctx, canvas.width);
+  }, [item]);
+  return <canvas ref={ref} width={360} height={360} className={className} aria-label={item.title} />;
+}
+
+export function HomePage() {
+  const { navigate } = useUi();
+  const { assets, projects } = useLibrary();
+  const recentProjects = useMemo(() => projects.slice(0, 4), [projects]);
+  const stickers = useMemo(
+    () => assets.filter((a) => !a.deleted && (a.kind === 'sticker' || a.kind === 'cutout')).slice(0, 8),
+    [assets],
+  );
+  const totalSize = useMemo(() => assets.reduce((sum, a) => sum + a.size, 0), [assets]);
+
+  return (
+    <div className="mx-auto w-full max-w-[1180px] px-3 pb-24 pt-4 sm:px-6 sm:pb-10 sm:pt-8">
+      <section className="relative overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
+        <div className="hero-grid absolute inset-0 opacity-70" aria-hidden />
+        <div className="relative grid gap-6 p-5 sm:p-8 lg:grid-cols-[1.15fr_0.85fr] lg:p-10">
+          <div className="min-w-0">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="chip chip-active">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                Local-first
+              </span>
+              <span className="chip">No API key</span>
+              <span className="chip">No upload</span>
+              <span className="chip">Works offline</span>
+            </div>
+            <h1 className="text-[30px] font-semibold leading-[1.08] tracking-tight sm:text-[42px]">
+              Your personal
+              <br />
+              meme asset factory.
+            </h1>
+            <p className="mt-3 max-w-lg text-[13px] leading-relaxed text-[var(--text-dim)] sm:text-sm">
+              Cut a head out of any photo, wrap it in a real alpha outline, compose it on an infinite canvas with
+              captions and stickers, then batch the whole set. Everything runs in this browser tab — your images never
+              leave the device.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button type="button" className="btn-primary" onClick={() => navigate('create')} data-testid="hero-create">
+                <Sparkles size={15} />
+                Create a meme
+              </button>
+              <button type="button" className="btn" onClick={() => navigate('batch')}>
+                <Zap size={15} />
+                Batch process
+              </button>
+              <button type="button" className="btn" onClick={() => navigate('discover')}>
+                <LayersIcon size={15} />
+                Browse discovery
+              </button>
+            </div>
+            <dl className="mt-6 grid max-w-md grid-cols-3 gap-2">
+              {[
+                { label: 'Assets on device', value: assets.filter((a) => !a.deleted).length },
+                { label: 'Saved projects', value: projects.length },
+                { label: 'Local storage', value: formatBytes(totalSize) },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-2.5 py-2">
+                  <dt className="text-[10px] uppercase tracking-wide text-[var(--text-faint)]">{stat.label}</dt>
+                  <dd className="mt-0.5 font-mono text-sm">{stat.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          <div className="relative min-w-0">
+            <div className="grid grid-cols-2 gap-2.5">
+              {STARTER_ITEMS.slice(0, 4).map((item, i) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => navigate('discover')}
+                  className="group relative overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-2 transition-transform hover:-translate-y-0.5"
+                  style={{ transform: `rotate(${i % 2 === 0 ? -1.2 : 1.2}deg)` }}
+                  aria-label={`Open ${item.title}`}
+                >
+                  <span className="checker flex aspect-square items-center justify-center rounded-lg">
+                    <StarterThumb item={item} className="h-full w-full object-contain p-1" />
+                  </span>
+                  <span className="mt-1.5 block truncate text-[11px] text-[var(--text-dim)]">{item.title}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-2.5 text-center text-[10px] text-[var(--text-faint)]">
+              12 starter stickers generated locally · free to remix
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6">
+        <SectionHeader
+          title="Start here"
+          hint="Every entry point below is wired to a working flow, not a mock."
+        />
+        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          <QuickAction
+            icon={<ImagePlus size={16} />}
+            title="Open an image"
+            body="Drop a photo, paste from the clipboard or pick a file. Nothing is uploaded."
+            onClick={() => navigate('create')}
+          />
+          <QuickAction
+            icon={<Wand2 size={16} />}
+            title="Extract a head"
+            body="FaceMesh picks the person; the RVM matte shapes hair and ears."
+            onClick={() => navigate('create')}
+          />
+          <QuickAction
+            icon={<Zap size={16} />}
+            title="Batch a folder"
+            body="Queue dozens of images, retry failures, export a single ZIP."
+            onClick={() => navigate('batch')}
+          />
+          <QuickAction
+            icon={<LayersIcon size={16} />}
+            title="Compose on canvas"
+            body="Layers, outlines, text, stickers and true transparent PNG export."
+            onClick={() => navigate('create')}
+          />
+          <QuickAction
+            icon={<FolderOpen size={16} />}
+            title="My Space"
+            body="Your local asset library with folders, tags, favorites and trash."
+            onClick={() => navigate('library')}
+          />
+          <QuickAction
+            icon={<Cpu size={16} />}
+            title="Templates"
+            body="Reusable presets for outlines, extraction modes and batch runs."
+            onClick={() => navigate('templates')}
+          />
+        </div>
+      </section>
+
+      <section className="mt-7 grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+        <div>
+          <SectionHeader
+            title="Recent projects"
+            hint="Saved in IndexedDB on this device."
+            action={
+              projects.length ? (
+                <button type="button" className="btn-ghost text-[11px]" onClick={() => navigate('library')}>
+                  Open My Space <ArrowRight size={13} />
+                </button>
+              ) : null
+            }
+          />
+          {recentProjects.length === 0 ? (
+            <EmptyState
+              icon={<LayersIcon size={22} />}
+              title="No projects yet"
+              body="Create one from an image or start from a blank canvas — it will be saved locally and appear here."
+              action={
+                <button type="button" className="btn-primary" onClick={() => navigate('create')}>
+                  <Sparkles size={15} /> Start a project
+                </button>
+              }
+            />
+          ) : (
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              {recentProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <SectionHeader title="On this device" hint="Latest cutouts and stickers." />
+          {stickers.length === 0 ? (
+            <EmptyState
+              icon={<ShieldCheck size={22} />}
+              title="Nothing cut out yet"
+              body="Your first head sticker will show up here. It stays on this device until you export it."
+            />
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {stickers.map((asset) => (
+                <AssetTile key={asset.id} asset={asset} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="mt-7">
+        <SectionHeader title="How it works" hint="Four steps, zero uploads." />
+        <ol className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { icon: <MousePointerClick size={15} />, title: 'Drop an image', body: 'File, drag, paste or URL.' },
+            { icon: <Cpu size={15} />, title: 'Run local AI', body: 'FaceMesh + RVM in this tab.' },
+            { icon: <Sparkles size={15} />, title: 'Style the sticker', body: 'Outline, shadow, glow, feather.' },
+            { icon: <LayersIcon size={15} />, title: 'Compose & export', body: 'Canvas layers → transparent PNG.' },
+          ].map((step, index) => (
+            <li key={step.title} className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
+              <div className="flex items-center gap-2 text-[var(--accent)]">
+                {step.icon}
+                <span className="font-mono text-[10px] text-[var(--text-faint)]">0{index + 1}</span>
+              </div>
+              <p className="mt-2 text-sm font-medium">{step.title}</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-faint)]">{step.body}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </div>
+  );
+}
+
+function QuickAction({
+  icon,
+  title,
+  body,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex w-full items-start gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3.5 text-left transition-colors hover:border-[color-mix(in_srgb,var(--accent)_45%,var(--line))] hover:bg-[var(--panel-2)]"
+    >
+      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--panel-3)] text-[var(--accent)]">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center justify-between gap-2">
+          <span className="text-sm font-medium">{title}</span>
+          <ArrowRight size={14} className="shrink-0 text-[var(--text-faint)] transition-transform group-hover:translate-x-0.5" />
+        </span>
+        <span className="mt-0.5 block text-[11px] leading-relaxed text-[var(--text-faint)]">{body}</span>
+      </span>
+    </button>
+  );
+}
+
+export function ProjectCard({ project }: { project: { id: string; name: string; thumb: Blob | null; updatedAt: number; width: number; height: number } }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!project.thumb) {
+      setUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(project.thumb);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [project.thumb]);
+
+  return (
+    <button
+      type="button"
+      onClick={() => void openProject(project.id)}
+      className="group flex flex-col overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)] text-left transition-colors hover:border-[var(--text-faint)]"
+    >
+      <div className="checker-sm flex aspect-[4/3] items-center justify-center overflow-hidden">
+        {url ? (
+          <img src={url} alt={project.name} className="h-full w-full object-contain" loading="lazy" />
+        ) : (
+          <LayersIcon size={18} className="text-[var(--text-faint)]" />
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-2 px-2.5 py-2">
+        <span className="min-w-0">
+          <span className="block truncate text-[12px] font-medium">{project.name}</span>
+          <span className="block text-[10px] text-[var(--text-faint)]">
+            {project.width}×{project.height} · {timeAgo(project.updatedAt)}
+          </span>
+        </span>
+        <ArrowRight size={13} className="shrink-0 text-[var(--text-faint)]" />
+      </div>
+    </button>
+  );
+}
+
+export function AssetTile({ asset, onOpen }: { asset: StoredAsset; onOpen?: () => void }) {
+  const url = useAssetUrl(asset);
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group relative block overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--panel-2)]"
+      title={asset.name}
+      disabled={!onOpen}
+    >
+      <span className="checker-sm flex aspect-square items-center justify-center">
+        {url ? <img src={url} alt={asset.name} className="h-full w-full object-contain" loading="lazy" /> : null}
+      </span>
+      <span className="block truncate px-1.5 py-1 text-[10px] text-[var(--text-dim)]">{asset.name}</span>
+    </button>
+  );
+}
+
+export async function openProject(id: string): Promise<void> {
+  const { getProject } = await import('../lib/db');
+  const { useEditor } = await import('../state/editor');
+  const { useUi } = await import('../state/ui');
+  const project = await getProject(id);
+  if (!project) {
+    useUi.getState().toast('That project no longer exists on this device.', 'error');
+    return;
+  }
+  useEditor.getState().setProject({
+    id: project.id,
+    name: project.name,
+    layers: project.layers,
+    settings: {
+      width: project.width,
+      height: project.height,
+      background: project.background,
+      grid: project.grid,
+      snap: project.snap,
+    },
+  });
+  useUi.getState().navigate('editor');
+}
+
+export function timeAgo(timestamp: number): string {
+  const diff = Date.now() - timestamp;
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diff < minute) return 'just now';
+  if (diff < hour) return `${Math.floor(diff / minute)}m ago`;
+  if (diff < day) return `${Math.floor(diff / hour)}h ago`;
+  if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`;
+  return new Date(timestamp).toLocaleDateString();
+}
+
+export { assetUrl };

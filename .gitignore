@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# Test artefacts
+test-results/
+playwright-report/
+blob-report/
+coverage/
+playwright/.cache/
+
+# Local environment
+.env
+.env.*
+!.env.example
+*.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# Never commit credentials
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Local test fixtures (not used by the automated suite)
+tests/fixtures/

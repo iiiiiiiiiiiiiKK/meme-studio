@@ -1,0 +1,55 @@
+{
+  "name": "meme-studio",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Meme Studio — local-first meme asset factory. Cut out heads, build stickers with real alpha outlines, compose memes on an infinite canvas, batch process, and keep everything offline.",
+  "license": "MIT",
+  "type": "module",
+  "homepage": "https://iiiiiiiiiiiiiKK.github.io/meme-studio/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iiiiiiiiiiiiiKK/meme-studio.git"
+  },
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview --port 4173 --host 127.0.0.1",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "e2e": "playwright test",
+    "e2e:desktop": "playwright test --project=desktop-chromium",
+    "e2e:mobile": "playwright test --project=mobile-webkit",
+    "e2e:install": "playwright install chromium webkit",
+    "screenshots": "node scripts/screenshots.mjs"
+  },
+  "dependencies": {
+    "@vladmandic/human": "3.3.6",
+    "clsx": "^2.1.1",
+    "idb": "^8.0.0",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^26.6.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "fake-indexeddb": "^6.0.0",
+    "jsdom": "^25.0.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  }
+}
