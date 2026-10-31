@@ -76,3 +76,26 @@ const MODEL_BASE = 'https://your-cdn.example/models/';
 | Blank page, no assets load | The site is served from a sub-path without `base: './'` | Keep `base: './'` in `vite.config.ts` |
 | "Local storage is unavailable" toast | Browser blocked IndexedDB (private mode, strict policy) | Use a normal window; the app keeps working but cannot save |
 | Engine status stays "Loading" | The model download is slow | Wait; the download is cached afterwards |
+
+## 7. Sub-path deployments (GitHub Pages project sites)
+
+GitHub Pages project sites live at `https://user.github.io/<repo>/`, i.e. one
+directory below the domain root. Two things make that work:
+
+- `vite.config.ts` uses `base: './'`, so the bundle references its assets relatively.
+- `src/lib/ai.ts` resolves the model directory with
+  `new URL('models/', document.baseURI)`. `document.baseURI` is the page URL, so a
+  sub-path deployment asks for `/<repo>/models/…` and a root deployment asks for
+  `/models/…`.
+
+**Do not resolve against `window.location.origin`** — that drops the sub-path and
+every model request returns 404, which makes the engine fail with
+"Cannot read properties of undefined (reading 'inputNodes')".
+
+To verify a sub-path build locally:
+
+```bash
+npm run build
+node scripts/serve-subpath.mjs     # serves dist/ under /meme-studio/
+node scripts/verify-subpath.mjs    # loads the engine through that sub-path
+```

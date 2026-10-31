@@ -54,11 +54,18 @@ interface HumanInstance {
 }
 
 /**
- * Models are served from the app root (`/models/…` in dev, `./models/…` for a
- * relative production build). Resolving against `import.meta.env.BASE_URL`
- * keeps this correct on every route, including sub-path deployments.
+ * Where the model files live.
+ *
+ * The build uses `base: './'`, so the app can be deployed at a domain root or in
+ * a sub-path such as `https://user.github.io/meme-studio/`. Resolving `models/`
+ * against `document.baseURI` keeps that working: `document.baseURI` is the URL of
+ * the page that loaded the bundle, so a sub-path deployment resolves to
+ * `/meme-studio/models/…` and a root deployment to `/models/…`.
+ *
+ * (Resolving against `window.location.origin` instead would silently drop the
+ * sub-path and every model request would 404.)
  */
-const MODEL_BASE = new URL(`${import.meta.env.BASE_URL}models/`, window.location.origin).href;
+const MODEL_BASE = new URL('models/', document.baseURI).href;
 
 let instancePromise: Promise<HumanInstance> | null = null;
 let engineInfo: { backend: string; segModel: string } | null = null;
