@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useUi } from '../state/ui';
+import { useI18n } from '../i18n';
 import { useLibrary } from '../state/library';
 import { STARTER_ITEMS, type StarterItem } from '../lib/starter';
 import { generateStarter } from '../lib/starter';
@@ -55,6 +56,7 @@ function buildCatalog(): CommunityItem[] {
 }
 
 export function DiscoverPage() {
+  const { t } = useI18n();
   const { search, setSearch, toast, navigate } = useUi();
   const { assets } = useLibrary();
   const [sort, setSort] = useState<SortKey>('trending');
@@ -96,10 +98,12 @@ export function DiscoverPage() {
     <div className="mx-auto w-full max-w-[1180px] px-3 pb-24 pt-4 sm:px-6 sm:pb-10 sm:pt-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Discover</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t('Discover')}</h1>
           <p className="mt-1 max-w-xl text-[12px] leading-relaxed text-[var(--text-dim)]">
-            The bundled starter collection — {catalog.length} stickers generated locally by the studio's own renderer.
-            Import any of them into My Space, remix them, or download the PNG.
+            {t(
+              'The bundled starter collection — {count} stickers generated locally by the studio’s own renderer. Import any of them into My Space, remix them, or download the PNG.',
+              { count: catalog.length },
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -107,10 +111,10 @@ export function DiscoverPage() {
             value={sort}
             onChange={(value) => setSort(value as SortKey)}
             options={[
-              { value: 'trending', label: 'Trending' },
-              { value: 'latest', label: 'Latest' },
-              { value: 'downloads', label: 'Downloads' },
-              { value: 'favorites', label: 'Favorites' },
+              { value: 'trending', label: t('Trending') },
+              { value: 'latest', label: t('Latest') },
+              { value: 'downloads', label: t('Downloads') },
+              { value: 'favorites', label: t('Favorites') },
             ]}
             size="sm"
           />
@@ -123,14 +127,14 @@ export function DiscoverPage() {
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)]" />
             <input
               className="field pl-8"
-              placeholder="Search the starter pack by name or tag…"
+              placeholder={t('Search the starter pack by name or tag…')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              aria-label="Search discovery"
+              aria-label={t('Search discovery')}
               data-testid="discover-search"
             />
             {search ? (
-              <button type="button" className="icon-btn absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2" onClick={() => setSearch('')} aria-label="Clear search">
+              <button type="button" className="icon-btn absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2" onClick={() => setSearch('')} aria-label={t('Clear search')}>
                 <X size={13} />
               </button>
             ) : null}
@@ -143,7 +147,7 @@ export function DiscoverPage() {
                 className={`chip shrink-0 ${category === item ? 'chip-active' : ''}`}
                 onClick={() => setCategory(item)}
               >
-                {item}
+                {t(item)}
               </button>
             ))}
           </div>
@@ -151,7 +155,7 @@ export function DiscoverPage() {
 
         <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1">
           <span className="flex shrink-0 items-center gap-1 text-[10px] uppercase tracking-wide text-[var(--text-faint)]">
-            <Filter size={11} /> Tags
+            <Filter size={11} /> {t('Tags')}
           </span>
           {allTags.map((tag) => (
             <button
@@ -168,8 +172,7 @@ export function DiscoverPage() {
 
       <div className="mt-4 flex items-center justify-between">
         <p className="text-[11px] text-[var(--text-faint)]">
-          {items.length} item{items.length === 1 ? '' : 's'} · your device holds {localCount} asset
-          {localCount === 1 ? '' : 's'}
+          {t('{count} items · your device holds {local} assets', { count: items.length, local: localCount })}
         </p>
         <span className="hidden items-center gap-1.5 text-[10px] text-[var(--text-faint)] sm:flex">
           <ArrowUpDown size={11} /> {sort}
@@ -179,8 +182,8 @@ export function DiscoverPage() {
       {items.length === 0 ? (
         <div className="mt-3">
           <EmptyState
-            title="Nothing matches that filter"
-            body="Try clearing the search or picking a different category."
+            title={t('Nothing matches that filter')}
+            body={t('Try clearing the search or picking a different category.')}
             action={
               <button
                 type="button"
@@ -191,7 +194,7 @@ export function DiscoverPage() {
                   setCategory('All');
                 }}
               >
-                Reset filters
+                {t('Reset filters')}
               </button>
             }
           />
@@ -205,20 +208,19 @@ export function DiscoverPage() {
       )}
 
       <div className="mt-6 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4">
-        <SectionHeader title="About this collection" hint="Honest labelling matters more than a big number." />
+        <SectionHeader title={t('About this collection')} hint={t('Honest labelling matters more than a big number.')} />
         <p className="text-[12px] leading-relaxed text-[var(--text-dim)]">
-          This build ships a <strong className="text-[var(--text)]">starter pack</strong> instead of a hosted community
-          database. The stickers are rendered on demand by <code className="font-mono text-[11px]">src/lib/starter.ts</code>{' '}
-          with the same Canvas pipeline used for your own cutouts, then stored locally when you import them. There is no
-          fake download counter and no mock author. A real multi-user gallery needs a backend, which this local-first
-          release does not ship — see the README for the roadmap.
+          {t('This build ships a')} <strong className="text-[var(--text)]">{t('starter pack')}</strong>{' '}
+          {t('instead of a hosted community database. The stickers are rendered on demand by')}{' '}
+          <code className="font-mono text-[11px]">src/lib/starter.ts</code>{' '}
+          {t('with the same Canvas pipeline used for your own cutouts, then stored locally when you import them. There is no fake download counter and no mock author. A real multi-user gallery needs a backend, which this local-first release does not ship — see the README for the roadmap.')}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button type="button" className="btn text-[12px]" onClick={() => void importAllStarters()}>
-            <Download size={13} /> Import all {catalog.length} starters
+            <Download size={13} /> {t('Import all {count} starters', { count: catalog.length })}
           </button>
           <button type="button" className="btn text-[12px]" onClick={() => navigate('create')}>
-            <Sparkles size={13} /> Make your own instead
+            <Sparkles size={13} /> {t('Make your own instead')}
           </button>
         </div>
       </div>
@@ -226,7 +228,7 @@ export function DiscoverPage() {
   );
 
   async function importAllStarters(): Promise<void> {
-    toast('Generating the starter pack…', 'info');
+    toast(t('Generating the starter pack…'), 'info');
     let done = 0;
     for (const item of STARTER_ITEMS) {
       try {
@@ -244,14 +246,15 @@ export function DiscoverPage() {
         done++;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        toast(`Could not import ${item.title}`, 'error', message);
+        toast(t('Could not import {name}', { name: item.title }), 'error', message);
       }
     }
-    if (done) toast(`${done} starter asset${done === 1 ? '' : 's'} imported to My Space.`, 'success');
+    if (done) toast(t('{count} starter assets imported to My Space.', { count: done }), 'success');
   }
 }
 
 function CommunityCard({ item, onOpen }: { item: CommunityItem; onOpen: () => void }) {
+  const { t } = useI18n();
   const { toast } = useUi();
   const [imported, setImported] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -273,9 +276,9 @@ function CommunityCard({ item, onOpen }: { item: CommunityItem; onOpen: () => vo
         hasAlpha: true,
       });
       setImported(true);
-      toast(`${item.title} added to My Space.`, 'success');
+      toast(t('{name} added to My Space.', { name: item.title }), 'success');
     } catch (error) {
-      toast('Import failed', 'error', error instanceof Error ? error.message : String(error));
+      toast(t('Import failed'), 'error', error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
@@ -288,9 +291,9 @@ function CommunityCard({ item, onOpen }: { item: CommunityItem; onOpen: () => vo
       const generated = await generateStarter(item.starter);
       downloadBlob(generated.blob, `${item.id}.png`);
       setSaved(true);
-      toast('PNG downloaded.', 'success');
+      toast(t('PNG downloaded.'), 'success');
     } catch (error) {
-      toast('Download failed', 'error', error instanceof Error ? error.message : String(error));
+      toast(t('Download failed'), 'error', error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
@@ -298,7 +301,7 @@ function CommunityCard({ item, onOpen }: { item: CommunityItem; onOpen: () => vo
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)]">
-      <button type="button" onClick={onOpen} className="checker-sm relative block aspect-square" aria-label={`Open ${item.title} in Create`}>
+      <button type="button" onClick={onOpen} className="checker-sm relative block aspect-square" aria-label={t('Open {name} in Create', { name: item.title })}>
         {item.starter ? (
           <StarterThumb item={item.starter} className="h-full w-full object-contain p-2" />
         ) : (
@@ -307,7 +310,7 @@ function CommunityCard({ item, onOpen }: { item: CommunityItem; onOpen: () => vo
           </span>
         )}
         <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur">
-          {item.category}
+          {t(item.category)}
         </span>
       </button>
       <div className="flex flex-1 flex-col p-2.5">
@@ -323,18 +326,18 @@ function CommunityCard({ item, onOpen }: { item: CommunityItem; onOpen: () => vo
             className="btn h-8 flex-1 px-2 text-[11px]"
             onClick={() => void importToLibrary()}
             disabled={busy || imported}
-            aria-label={`Import ${item.title} to My Space`}
+            aria-label={t('Import {name} to My Space', { name: item.title })}
           >
             {imported ? <Check size={12} /> : <Download size={12} />}
-            {imported ? 'Added' : 'Import'}
+            {imported ? t('Added') : t('Import')}
           </button>
           <button
             type="button"
             className="icon-btn h-8 w-8"
             onClick={() => void saveDownload()}
             disabled={busy}
-            aria-label={`Download ${item.title}`}
-            title="Download PNG"
+            aria-label={t('Download {name}', { name: item.title })}
+            title={t('Download PNG')}
           >
             <Download size={13} />
           </button>
@@ -343,9 +346,9 @@ function CommunityCard({ item, onOpen }: { item: CommunityItem; onOpen: () => vo
             className="icon-btn h-8 w-8"
             onClick={() => {
               setSaved((s) => !s);
-              toast(saved ? 'Removed from favorites' : 'Added to favorites (this session)', 'info');
+              toast(saved ? t('Removed from favorites') : t('Added to favorites (this session)'), 'info');
             }}
-            aria-label="Favorite"
+            aria-label={t('Favorite')}
             aria-pressed={saved}
           >
             <Heart size={13} style={{ color: saved ? 'var(--danger)' : undefined }} fill={saved ? 'var(--danger)' : 'none'} />
@@ -357,6 +360,7 @@ function CommunityCard({ item, onOpen }: { item: CommunityItem; onOpen: () => vo
 }
 
 export function PublicationPage({ id }: { id: string }) {
+  const { t } = useI18n();
   const { navigate, toast } = useUi();
   const item = STARTER_ITEMS.find((s) => s.id === id);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -375,11 +379,11 @@ export function PublicationPage({ id }: { id: string }) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16">
         <EmptyState
-          title="That publication is not in this build"
-          body="This release ships the local starter collection only, so links to other publications will not resolve."
+          title={t('That publication is not in this build')}
+          body={t('This release ships the local starter collection only, so links to other publications will not resolve.')}
           action={
             <button type="button" className="btn-primary" onClick={() => navigate('discover')}>
-              Back to Discover
+              {t('Back to Discover')}
             </button>
           }
         />
@@ -390,7 +394,7 @@ export function PublicationPage({ id }: { id: string }) {
   return (
     <div className="mx-auto w-full max-w-[1100px] px-3 pb-24 pt-4 sm:px-6 sm:pb-10">
       <button type="button" className="btn-ghost mb-3 text-[12px]" onClick={() => navigate('discover')}>
-        ← Discover
+        ← {t('Discover')}
       </button>
       <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="overflow-hidden rounded-xl border border-[var(--line)]">
@@ -399,16 +403,16 @@ export function PublicationPage({ id }: { id: string }) {
           </div>
         </div>
         <div className="panel p-4">
-          <span className="chip">{item.category}</span>
+          <span className="chip">{t(item.category)}</span>
           <h1 className="mt-2 text-lg font-semibold">{item.title}</h1>
           <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-dim)]">{item.description}</p>
           <dl className="mt-3 space-y-1.5 text-[11px]">
-            <Row label="Author" value={item.author} />
-            <Row label="Dimensions" value={`${item.width} × ${item.height}`} />
-            <Row label="Format" value="PNG · transparent" />
-            <Row label="File size" value={size ? formatBytes(size) : '—'} />
-            <Row label="License" value="CC0 · free to remix" />
-            <Row label="Source" value="Rendered locally" />
+            <Row label={t('Author')} value={item.author} />
+            <Row label={t('Dimensions')} value={`${item.width} × ${item.height}`} />
+            <Row label={t('Format')} value={t('PNG · transparent')} />
+            <Row label={t('File size')} value={size ? formatBytes(size) : '—'} />
+            <Row label={t('License')} value={t('CC0 · free to remix')} />
+            <Row label={t('Source')} value={t('Rendered locally')} />
           </dl>
           <div className="mt-3 flex flex-wrap gap-1.5">
             {item.tags.map((tag) => (
@@ -426,11 +430,11 @@ export function PublicationPage({ id }: { id: string }) {
                 if (!canvas) return;
                 void canvasToBlob(canvas, 'image/png').then((blob) => {
                   downloadBlob(blob, `${item.id}.png`);
-                  toast('Downloaded.', 'success');
+                  toast(t('Downloaded.'), 'success');
                 });
               }}
             >
-              <Download size={13} /> Download PNG
+              <Download size={13} /> {t('Download PNG')}
             </button>
             <button
               type="button"
@@ -447,10 +451,10 @@ export function PublicationPage({ id }: { id: string }) {
                   source: 'starter pack',
                   hasAlpha: true,
                 });
-                toast('Added to My Space.', 'success');
+                toast(t('Added to My Space.'), 'success');
               }}
             >
-              <Star size={13} /> Add to library
+              <Star size={13} /> {t('Add to library')}
             </button>
           </div>
         </div>

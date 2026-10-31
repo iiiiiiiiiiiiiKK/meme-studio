@@ -65,18 +65,30 @@ export interface RenderOptions {
   keepSize?: boolean;
 }
 
+export interface OutlinedResult {
+  /** Painted, already trimmed canvas. */
+  canvas: HTMLCanvasElement;
+  /** Source-space rectangle that was cropped out (x/y can be negative because of padding). */
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+}
+
 /**
- * Paints the stroke layers under the source image and returns a trimmed canvas.
+ * Paints the stroke layers under the source image and returns a trimmed canvas
+ * plus the crop offset, so the caller can trim the subject alpha by exactly the
+ * same amount.
  *
- * The result always keeps real alpha (never a flattened checkerboard) so it can be
- * exported as a transparent PNG or used as a canvas layer.
+ * The result always keeps real alpha (never a flattened checkerboard) so it can
+ * be exported as a transparent PNG or used as a canvas layer.
  */
 export function renderOutlined(
   source: HTMLCanvasElement,
   alpha: Uint8ClampedArray,
   settings: OutlineSettings,
   options: RenderOptions = {},
-): HTMLCanvasElement {
+): OutlinedResult {
   const { width, height } = source;
   const layers = computeStrokeLayers(alpha, width, height, settings);
   const padding = Math.max(0, options.padding ?? 0);
@@ -134,12 +146,7 @@ export function renderOutlined(
   subjectCtx.putImageData(image, 0, 0);
   ctx.drawImage(subject, offsetX, offsetY);
 
-  if (options.keepSize && !options.trim) {
-    const fixed = createCanvas(width, height);
-    ctx2d(fixed).drawImage(source, 0, 0);
-    return fixed;
-  }
-  return canvas;
+  return { canvas, offsetX: bounds.x, offsetY: bounds.y, width: bounds.width, height: bounds.height };
 }
 
 export function paintMask(

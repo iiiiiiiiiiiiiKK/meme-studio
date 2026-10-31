@@ -2,6 +2,10 @@
 
 All numbers below come from actual runs in this repository.
 
+> Updated for the 1.1 release: the default matte is now MediaPipe Selfie Segmentation (the
+> TensorFlow.js RVM graph returned an empty alpha for still images), the head region is derived
+> from the real FaceMesh contour, and the UI is bilingual (English / 简体中文).
+
 ## 1. Toolchain
 
 | Tool | Version |
@@ -26,8 +30,8 @@ npx tsc --noEmit -p tsconfig.json
 
 ```
 npx vitest run
-→ Test Files  5 passed (5)
-→ Tests       33 passed (33)
+→ Test Files  6 passed (6)
+→ Tests       44 passed (44)
 ```
 
 | File | Tests | What it covers |
@@ -36,6 +40,7 @@ npx vitest run
 | `tests/outline.test.ts` | 6 | hex parsing, no layers when disabled, double outline produces two rings and the outer ring covers more pixels, the stroke is painted outside the subject while the subject stays opaque, corners stay transparent (no baked checkerboard), `visibleBounds` trims correctly, an empty mask does not crash |
 | `tests/cutout.test.ts` | 5 | background mode keeps the full silhouette, head crop is tighter than head+shoulders, a missing face produces an explicit warning instead of a fake head crop, the output keeps genuine transparency, an empty mask falls back to the original image with a warning |
 | `tests/render.test.ts` | 7 | text renders real pixels on a transparent canvas, a solid background is honoured when transparency is off, 2× export doubles the dimensions, hidden layers are skipped, single-layer export works, export names are sanitised, an empty scene exports fully transparent pixels |
+| `tests/region.test.ts` | 11 | landmark-driven head regions (hair included, face mode excludes hair, bust crops reach lower/wider, box fallback), connected-component isolation, alpha tightening |
 | `tests/db.test.ts` | 6 | asset round-trip, update and delete, project layers persist, presets filter by kind, meta round-trip, `clearAllData` wipes every store |
 
 The Canvas 2D API is provided by a purpose-written software rasteriser in `tests/setup.ts`, so the tests exercise the **real** rendering code rather than a mock.
@@ -44,7 +49,7 @@ The Canvas 2D API is provided by a purpose-written software rasteriser in `tests
 
 ```
 npx playwright test --project=desktop-chromium
-→ 16 passed
+→ 18 passed
 
 npx playwright test --project=mobile-webkit
 → 5 passed

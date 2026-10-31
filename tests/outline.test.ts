@@ -45,7 +45,7 @@ describe('outline rendering', () => {
 
   it('paints an outline outside the subject and keeps the subject opaque', () => {
     const { canvas, alpha } = discCanvas(64, 18);
-    const result = renderOutlined(canvas, alpha, { ...DEFAULT_OUTLINE, enabled: true, thickness: 6, shadow: false, glow: false });
+    const { canvas: result } = renderOutlined(canvas, alpha, { ...DEFAULT_OUTLINE, enabled: true, thickness: 6, shadow: false, glow: false });
     const ctx = ctx2d(result);
     const data = ctx.getImageData(0, 0, result.width, result.height).data;
     const centre = ((result.height / 2) | 0) * result.width + ((result.width / 2) | 0);

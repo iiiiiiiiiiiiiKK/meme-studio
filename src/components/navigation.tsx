@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useUi, type Route } from '../state/ui';
 import { AUTHOR_X_HANDLE, AUTHOR_X_URL } from '../state/ui';
+import { useI18n } from '../i18n';
 import { XIcon, GithubIcon } from './brand';
 import { useEditor } from '../state/editor';
 import { cx } from '../lib/cx';
@@ -32,6 +33,7 @@ const PRIMARY: { route: Route; label: string; icon: typeof Home }[] = [
 ];
 
 export function TopBar({ onSearch }: { onSearch: (value: string) => void }) {
+  const { t } = useI18n();
   const { route, navigate, theme, setTheme, search, setSearch, setMobileNav, mobileNavOpen } = useUi();
   const { projectName, dirty } = useEditor();
   const [localSearch, setLocalSearch] = useState(search);
@@ -47,7 +49,7 @@ export function TopBar({ onSearch }: { onSearch: (value: string) => void }) {
           type="button"
           className="icon-btn lg:hidden"
           onClick={() => setMobileNav(!mobileNavOpen)}
-          aria-label="Toggle navigation"
+          aria-label={t('Toggle navigation')}
           aria-expanded={mobileNavOpen}
         >
           {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
@@ -57,7 +59,7 @@ export function TopBar({ onSearch }: { onSearch: (value: string) => void }) {
           type="button"
           onClick={() => navigate('home')}
           className="flex items-center gap-2.5"
-          aria-label="Meme Studio home"
+          aria-label={t('Meme Studio home')}
         >
           <span
             className="grid h-8 w-8 place-items-center rounded-[9px] text-[13px] font-black"
@@ -67,7 +69,7 @@ export function TopBar({ onSearch }: { onSearch: (value: string) => void }) {
           </span>
           <span className="hidden flex-col leading-none sm:flex">
             <span className="text-[13px] font-semibold tracking-tight">Meme Studio</span>
-            <span className="mt-0.5 text-[10px] text-[var(--text-faint)]">Local-first asset factory</span>
+            <span className="mt-0.5 text-[10px] text-[var(--text-faint)]">{t('Local-first asset factory')}</span>
           </span>
         </button>
 
@@ -83,13 +85,13 @@ export function TopBar({ onSearch }: { onSearch: (value: string) => void }) {
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)]" />
             <input
               className="field pl-8 pr-16"
-              placeholder="Search starter assets, tags, creators…"
+              placeholder={t('Search starter assets, tags, creators…')}
               value={localSearch}
               onChange={(e) => {
                 setLocalSearch(e.target.value);
                 setSearch(e.target.value);
               }}
-              aria-label="Search"
+              aria-label={t('Search')}
             />
             <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 sm:block">
               <span className="kbd">↵</span>
@@ -103,20 +105,20 @@ export function TopBar({ onSearch }: { onSearch: (value: string) => void }) {
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--line)] px-2.5 text-[12px] font-medium text-[var(--text-dim)] transition-colors hover:border-[var(--text-faint)] hover:text-[var(--text)]"
-            aria-label={`Author on X: ${AUTHOR_X_HANDLE}`}
-            title={`Author on X: ${AUTHOR_X_HANDLE}`}
+            aria-label={t('Author on X: {handle}', { handle: AUTHOR_X_HANDLE })}
+            title={t('Author on X: {handle}', { handle: AUTHOR_X_HANDLE })}
             data-testid="author-x-link"
           >
             <XIcon size={13} />
-            <span className="hidden xs:inline">Author</span>
+            <span className="hidden xs:inline">{t('Author')}</span>
           </a>
 
           <button
             type="button"
             className="icon-btn"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-            title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
+            aria-label={theme === 'dark' ? t('Switch to light theme') : t('Switch to dark theme')}
+            title={theme === 'dark' ? t('Light theme') : t('Dark theme')}
           >
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
@@ -127,7 +129,7 @@ export function TopBar({ onSearch }: { onSearch: (value: string) => void }) {
             onClick={() => navigate(route === 'editor' ? 'create' : 'create')}
           >
             <Plus size={15} />
-            New
+            {t('New')}
           </button>
 
           <a
@@ -135,8 +137,8 @@ export function TopBar({ onSearch }: { onSearch: (value: string) => void }) {
             target="_blank"
             rel="noopener noreferrer"
             className="icon-btn hidden sm:inline-flex"
-            aria-label="GitHub repository"
-            title="GitHub repository"
+            aria-label={t('GitHub repository')}
+            title={t('GitHub repository')}
           >
             <GithubIcon size={16} />
           </a>
@@ -145,12 +147,12 @@ export function TopBar({ onSearch }: { onSearch: (value: string) => void }) {
 
       {route === 'editor' ? (
         <div className="flex h-9 items-center gap-2 border-t border-[var(--line)] px-3 text-[12px] sm:px-5">
-          <span className="truncate font-medium">{projectName || 'Untitled meme'}</span>
+          <span className="truncate font-medium">{projectName || t('Untitled meme')}</span>
           <span className={cx('h-1.5 w-1.5 shrink-0 rounded-full', dirty ? 'bg-[var(--warn)]' : 'bg-[var(--ok)]')} />
-          <span className="faint text-[11px]">{dirty ? 'Unsaved changes' : 'Saved to this device'}</span>
+          <span className="faint text-[11px]">{dirty ? t('Unsaved changes') : t('Saved to this device')}</span>
           <span className="ml-auto hidden items-center gap-2 text-[11px] text-[var(--text-faint)] sm:flex">
             <Layers size={12} />
-            Canvas editor
+            {t('Canvas editor')}
           </span>
         </div>
       ) : null}
@@ -159,13 +161,14 @@ export function TopBar({ onSearch }: { onSearch: (value: string) => void }) {
 }
 
 export function SideNav() {
+  const { t } = useI18n();
   const { route, navigate, engineStatus } = useUi();
   const projects = useEditor((s) => s.layers.length);
   void projects;
 
   return (
     <aside className="hidden w-[208px] shrink-0 flex-col border-r border-[var(--line)] bg-[var(--bg-soft)] px-2.5 py-3 lg:flex">
-      <nav className="flex flex-col gap-0.5" aria-label="Main navigation">
+      <nav className="flex flex-col gap-0.5" aria-label={t('Main navigation')}>
         {PRIMARY.map((item) => {
           const Icon = item.icon;
           const active = route === item.route || (route === 'editor' && item.route === 'create') || (route === 'publication' && item.route === 'discover');
@@ -179,22 +182,22 @@ export function SideNav() {
               data-testid={`nav-${item.route}`}
             >
               <Icon size={15} />
-              <span>{item.label}</span>
+              <span>{t(item.label)}</span>
             </button>
           );
         })}
       </nav>
 
       <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
-        <p className="section-title">Local AI</p>
+        <p className="section-title">{t('Local AI')}</p>
         <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-dim)]">
           {engineStatus === 'ready'
-            ? 'RVM matting + FaceMesh running in your browser.'
+            ? t('RVM matting + FaceMesh running in your browser.')
             : engineStatus === 'loading'
-              ? 'Loading models from this site…'
+              ? t('Loading models from this site…')
               : engineStatus === 'error'
-                ? 'Engine unavailable — see Settings.'
-                : 'Models load on first cutout. Nothing is uploaded.'}
+                ? t('Engine unavailable — see Settings.')
+                : t('Models load on first cutout. Nothing is uploaded.')}
         </p>
         <div className="mt-2.5 flex items-center gap-1.5 text-[10px] text-[var(--text-faint)]">
           <span
@@ -204,7 +207,7 @@ export function SideNav() {
                 engineStatus === 'ready' ? 'var(--ok)' : engineStatus === 'error' ? 'var(--danger)' : 'var(--text-faint)',
             }}
           />
-          {engineStatus === 'ready' ? 'Ready' : engineStatus === 'loading' ? 'Loading' : engineStatus === 'error' ? 'Error' : 'Idle'}
+          {engineStatus === 'ready' ? t('Ready') : engineStatus === 'loading' ? t('Loading') : engineStatus === 'error' ? t('Error') : t('Idle')}
         </div>
       </div>
 
@@ -219,7 +222,7 @@ export function SideNav() {
             <XIcon size={12} />
           </span>
           <span className="min-w-0">
-            <span className="block text-[10px] uppercase tracking-wide text-[var(--text-faint)]">Follow the author</span>
+            <span className="block text-[10px] uppercase tracking-wide text-[var(--text-faint)]">{t('Follow the author')}</span>
             <span className="block truncate font-medium">{AUTHOR_X_HANDLE}</span>
           </span>
         </a>
@@ -230,7 +233,7 @@ export function SideNav() {
           className="mt-2 flex items-center gap-2 px-1 text-[11px] text-[var(--text-faint)] hover:text-[var(--text)]"
         >
           <Github size={12} />
-          Open source · MIT
+          {t('Open source · MIT')}
         </a>
       </div>
     </aside>
@@ -238,15 +241,16 @@ export function SideNav() {
 }
 
 export function MobileNav() {
+  const { t } = useI18n();
   const { route, navigate, mobileNavOpen, setMobileNav } = useUi();
   if (!mobileNavOpen) return null;
   return (
-    <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
+    <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label={t('Navigation')}>
       <div className="absolute inset-0 bg-black/60" onClick={() => setMobileNav(false)} aria-hidden />
       <div className="fade-in absolute left-0 top-0 h-full w-[264px] border-r border-[var(--line)] bg-[var(--bg-soft)] p-3">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-sm font-semibold">Meme Studio</span>
-          <button type="button" className="icon-btn" onClick={() => setMobileNav(false)} aria-label="Close navigation">
+          <button type="button" className="icon-btn" onClick={() => setMobileNav(false)} aria-label={t('Close navigation')}>
             <X size={16} />
           </button>
         </div>
@@ -262,7 +266,7 @@ export function MobileNav() {
                 onClick={() => navigate(item.route)}
               >
                 <Icon size={15} />
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </button>
             );
           })}
@@ -274,7 +278,7 @@ export function MobileNav() {
           className="mt-4 flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2.5 text-[12px]"
         >
           <XIcon size={12} />
-          Author · {AUTHOR_X_HANDLE}
+          {t('Author · {handle}', { handle: AUTHOR_X_HANDLE })}
         </a>
       </div>
     </div>
@@ -290,12 +294,13 @@ const MOBILE_TABS: { route: Route; label: string; icon: typeof Home }[] = [
 ];
 
 export function BottomNav() {
+  const { t } = useI18n();
   const { route, navigate } = useUi();
   const items = useMemo(() => MOBILE_TABS, []);
   return (
     <nav
       className="safe-bottom fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_94%,transparent)] backdrop-blur lg:hidden"
-      aria-label="Mobile navigation"
+      aria-label={t('Mobile navigation')}
     >
       {items.map((item) => {
         const Icon = item.icon;
@@ -310,7 +315,7 @@ export function BottomNav() {
             aria-current={active ? 'page' : undefined}
           >
             <Icon size={18} />
-            <span className="text-[10px] font-medium">{item.label}</span>
+            <span className="text-[10px] font-medium">{t(item.label)}</span>
           </button>
         );
       })}

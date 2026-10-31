@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { translate, useI18n } from './i18n';
 import { useUi, type Route } from './state/ui';
 import { useLibrary } from './state/library';
 import { TopBar, SideNav, MobileNav, BottomNav } from './components/navigation';
@@ -15,18 +16,23 @@ import { ToastStack } from './components/ui';
 const ROUTES: Route[] = ['home', 'discover', 'create', 'editor', 'batch', 'library', 'templates', 'settings', 'publication'];
 
 export function App() {
+  const { t } = useI18n();
   const { route, toasts, dismissToast, toast, publicationId, navigate, theme } = useUi();
   const load = useLibrary((s) => s.load);
 
   // initial load + hash routing
   useEffect(() => {
     load().catch((error: unknown) => {
+      const detail = error instanceof Error ? error.message : String(error);
+      const { locale } = useUi.getState();
       toast(
-        'Local storage is unavailable',
+        translate(locale, 'Local storage is unavailable'),
         'error',
-        `Your browser blocked IndexedDB, so nothing can be saved. Private windows and some extensions cause this. (${
-          error instanceof Error ? error.message : String(error)
-        })`,
+        translate(
+          locale,
+          'Your browser blocked IndexedDB, so nothing can be saved. Private windows and some extensions cause this. ({reason})',
+          { reason: detail },
+        ),
       );
     });
   }, [load, toast]);
@@ -75,12 +81,12 @@ export function App() {
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
       <footer className="hidden border-t border-[var(--line)] px-4 py-3 text-[10px] text-[var(--text-faint)] lg:block">
         <div className="mx-auto flex max-w-[1180px] items-center gap-2">
-          <span>Meme Studio · local-first meme asset factory</span>
+          <span>{t('Meme Studio · local-first meme asset factory')}</span>
           <span className="ml-auto">
-            Built with React, TensorFlow.js (RVM + FaceMesh) and Canvas. MIT licensed.
+            {t('Built with React, TensorFlow.js (RVM + FaceMesh) and Canvas. MIT licensed.')}
           </span>
           <button type="button" className="underline-offset-2 hover:underline" onClick={() => navigate('settings')}>
-            Privacy
+            {t('Privacy')}
           </button>
         </div>
       </footer>

@@ -22,6 +22,9 @@ export default defineConfig({
   server: {
     port: 5199,
     host: '127.0.0.1',
+    watch: {
+      ignored: ['**/node_modules/**', '**/.git/**', '**/dist/**'],
+    },
   },
   preview: {
     port: 4173,

@@ -14,6 +14,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useUi } from '../state/ui';
+import { formatDate, useI18n } from '../i18n';
 import { listPresets, savePreset, deletePreset } from '../lib/db';
 import type { PresetKind, PresetRecord } from '../types';
 import { DEFAULT_OUTLINE } from '../types';
@@ -138,6 +139,7 @@ const BUILTINS: BuiltinTemplate[] = [
 ];
 
 export function TemplatesPage() {
+  const { t, locale } = useI18n();
   const { toast, navigate } = useUi();
   const [presets, setPresets] = useState<PresetRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,20 +198,26 @@ export function TemplatesPage() {
         });
       }
       navigate('editor');
-      toast(`Canvas preset “${template.name}” applied.`, 'success');
+      toast(t('Canvas preset “{name}” applied.', { name: t(template.name) }), 'success');
       return;
     }
     if (template.kind === 'export' || template.kind === 'batch') {
       navigate(template.kind === 'export' ? 'editor' : 'batch');
-      toast(`“${template.name}” applied to the ${template.kind === 'export' ? 'export' : 'batch'} panel.`, 'info');
+      toast(
+        t('“{name}” applied to the {kind} panel.', {
+          name: t(template.name),
+          kind: template.kind === 'export' ? t('Export') : t('Batch'),
+        }),
+        'info',
+      );
       return;
     }
     if (template.kind === 'extract' || template.kind === 'outline') {
       navigate('create');
-      toast(`“${template.name}” is ready in Create.`, 'info');
+      toast(t('“{name}” is ready in Create.', { name: t(template.name) }), 'info');
       return;
     }
-    toast('Preset applied.', 'success');
+    toast(t('Preset applied.'), 'success');
   }
 
   async function saveCurrent(): Promise<void> {
@@ -226,13 +234,13 @@ export function TemplatesPage() {
     setPresets((prev) => [...prev, preset]);
     setName('');
     setSaveOpen(false);
-    toast('Preset saved locally.', 'success');
+    toast(t('Preset saved locally.'), 'success');
   }
 
   async function exportPresets(): Promise<void> {
     const data = JSON.stringify({ version: 1, presets: [...BUILTINS.map((b) => ({ ...b, icon: undefined })), ...presets] }, null, 2);
     downloadBlob(new Blob([data], { type: 'application/json' }), `meme-studio-presets-${timestampSlug()}.json`);
-    toast('Preset bundle exported as JSON.', 'success');
+    toast(t('Preset bundle exported as JSON.'), 'success');
   }
 
   async function importPresets(file: File | null): Promise<void> {
@@ -241,7 +249,7 @@ export function TemplatesPage() {
     try {
       const text = await file.text();
       const parsed = JSON.parse(text) as { presets?: PresetRecord[] };
-      if (!parsed.presets?.length) throw new Error('No presets found in that file.');
+      if (!parsed.presets?.length) throw new Error(t('No presets found in that file.'));
       for (const preset of parsed.presets) {
         if (!preset.name || !preset.kind) continue;
         const record: PresetRecord = {
@@ -255,9 +263,9 @@ export function TemplatesPage() {
         await savePreset(record);
         setPresets((prev) => [...prev, record]);
       }
-      toast(`${parsed.presets.length} presets imported.`, 'success');
+      toast(t('{count} presets imported.', { count: parsed.presets.length }), 'success');
     } catch (error) {
-      toast('Import failed', 'error', error instanceof Error ? error.message : String(error));
+      toast(t('Import failed'), 'error', error instanceof Error ? error.message : String(error));
     } finally {
       setImportBusy(false);
     }
@@ -276,21 +284,20 @@ export function TemplatesPage() {
     <div className="mx-auto w-full max-w-[1180px] px-3 pb-24 pt-4 sm:px-6 sm:pb-10 sm:pt-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Templates</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t('Templates')}</h1>
           <p className="mt-1 max-w-xl text-[12px] text-[var(--text-dim)]">
-            Parameter presets — not just names. Each one stores the real values used by the cutout, canvas, export and
-            batch panels.
+            {t('Parameter presets — not just names. Each one stores the real values used by the cutout, canvas, export and batch panels.')}
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5">
           <button type="button" className="btn text-[11px]" onClick={() => setSaveOpen(true)}>
-            <Plus size={12} /> Save preset
+            <Plus size={12} /> {t('Save preset')}
           </button>
           <button type="button" className="btn text-[11px]" onClick={() => void exportPresets()}>
-            <Download size={12} /> Export
+            <Download size={12} /> {t('Export')}
           </button>
           <label className="btn cursor-pointer text-[11px]">
-            {importBusy ? <Spinner size={12} /> : <Upload size={12} />} Import
+            {importBusy ? <Spinner size={12} /> : <Upload size={12} />} {t('Import')}
             <input type="file" accept="application/json" className="hidden" onChange={(e) => void importPresets(e.target.files?.[0] ?? null)} />
           </label>
         </div>
@@ -299,20 +306,20 @@ export function TemplatesPage() {
       <div className="mt-4 flex flex-wrap gap-1.5">
         {kinds.map((k) => (
           <button key={k.id} type="button" className={cx('chip', kind === k.id && 'chip-active')} onClick={() => setKind(k.id)}>
-            {k.label}
+            {t(k.label)}
           </button>
         ))}
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-[12px] text-[var(--text-faint)]">
-          <Spinner size={14} /> Loading presets…
+          <Spinner size={14} /> {t('Loading presets…')}
         </div>
       ) : (
         <>
           <section className="mt-4">
             <h2 className="mb-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-dim)]">
-              Built-in · {filteredBuiltins.length}
+              {t('Built-in · {count}', { count: filteredBuiltins.length })}
             </h2>
             <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {filteredBuiltins.map((template) => {
@@ -328,11 +335,11 @@ export function TemplatesPage() {
                         <Icon size={15} />
                       </span>
                       <div className="min-w-0">
-                        <p className="truncate text-[12px] font-medium">{template.name}</p>
-                        <p className="text-[9px] uppercase tracking-wide text-[var(--text-faint)]">{template.kind} preset</p>
+                        <p className="truncate text-[12px] font-medium">{t(template.name)}</p>
+                        <p className="text-[9px] uppercase tracking-wide text-[var(--text-faint)]">{t('{kind} preset', { kind: template.kind })}</p>
                       </div>
                     </div>
-                    <p className="mt-2 flex-1 text-[11px] leading-relaxed text-[var(--text-dim)]">{template.description}</p>
+                    <p className="mt-2 flex-1 text-[11px] leading-relaxed text-[var(--text-dim)]">{t(template.description)}</p>
                     <pre className="mt-2 max-h-24 overflow-auto rounded border border-[var(--line)] bg-[var(--bg-soft)] p-1.5 font-mono text-[9px] leading-snug text-[var(--text-faint)]">
 {JSON.stringify(template.payload, null, 1)}
                     </pre>
@@ -342,7 +349,7 @@ export function TemplatesPage() {
                       onClick={() => void applyBuiltin(template)}
                       data-testid={`preset-use-${template.id}`}
                     >
-                      <Check size={11} /> Use preset
+                      <Check size={11} /> {t('Use preset')}
                     </button>
                   </div>
                 );
@@ -352,16 +359,16 @@ export function TemplatesPage() {
 
           <section className="mt-6">
             <h2 className="mb-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-dim)]">
-              Your presets · {filteredCustom.length}
+              {t('Your presets · {count}', { count: filteredCustom.length })}
             </h2>
             {filteredCustom.length === 0 ? (
               <EmptyState
                 icon={<Star size={20} />}
-                title="No custom presets yet"
-                body="Save the settings you keep re-using, then reuse them from any panel. Presets are stored locally and can be exported as JSON."
+                title={t('No custom presets yet')}
+                body={t('Save the settings you keep re-using, then reuse them from any panel. Presets are stored locally and can be exported as JSON.')}
                 action={
                   <button type="button" className="btn-primary text-[12px]" onClick={() => setSaveOpen(true)}>
-                    <Plus size={12} /> Create a preset
+                    <Plus size={12} /> {t('Create a preset')}
                   </button>
                 }
               />
@@ -377,18 +384,18 @@ export function TemplatesPage() {
                       <button
                         type="button"
                         className="icon-btn h-7 w-7 text-[var(--danger)]"
-                        aria-label={`Delete preset ${preset.name}`}
+                        aria-label={t('Delete preset {name}', { name: preset.name })}
                         onClick={async () => {
                           await deletePreset(preset.id);
                           setPresets((prev) => prev.filter((p) => p.id !== preset.id));
-                          toast('Preset deleted.', 'info');
+                          toast(t('Preset deleted.'), 'info');
                         }}
                       >
                         <Trash2 size={12} />
                       </button>
                     </div>
                     <p className="mt-2 text-[10px] text-[var(--text-faint)]">
-                      Created {new Date(preset.createdAt).toLocaleDateString()}
+                      {t('Created {date}', { date: formatDate(locale, preset.createdAt) })}
                     </p>
                     <button
                       type="button"
@@ -397,10 +404,10 @@ export function TemplatesPage() {
                         if (preset.kind === 'canvas') navigate('editor');
                         else if (preset.kind === 'batch') navigate('batch');
                         else navigate('create');
-                        toast(`Opened ${preset.kind} panel for “${preset.name}”.`, 'info');
+                        toast(t('Opened {kind} panel for “{name}”.', { kind: preset.kind, name: preset.name }), 'info');
                       }}
                     >
-                      <Check size={11} /> Use preset
+                      <Check size={11} /> {t('Use preset')}
                     </button>
                   </div>
                 ))}
@@ -411,41 +418,39 @@ export function TemplatesPage() {
       )}
 
       <div className="mt-6 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4">
-        <p className="section-title">How presets are stored</p>
+        <p className="section-title">{t('How presets are stored')}</p>
         <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-dim)]">
-          Built-in presets ship with the app and contain the exact parameter objects used by the editor. Custom presets
-          live in IndexedDB next to your assets and projects, and the export button produces a portable JSON bundle that
-          retains every stored value.
+          {t('Built-in presets ship with the app and contain the exact parameter objects used by the editor. Custom presets live in IndexedDB next to your assets and projects, and the export button produces a portable JSON bundle that retains every stored value.')}
         </p>
       </div>
 
       <Modal
         open={saveOpen}
         onClose={() => setSaveOpen(false)}
-        title="Save a preset"
+        title={t('Save a preset')}
         footer={
           <>
             <button type="button" className="btn text-[12px]" onClick={() => setSaveOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" className="btn-primary text-[12px]" onClick={() => void saveCurrent()} disabled={!name.trim()}>
-              Save
+              {t('Save')}
             </button>
           </>
         }
       >
-        <label className="label">Preset name</label>
-        <input className="field" value={name} onChange={(e) => setName(e.target.value)} placeholder="My crypto sticker outline" autoFocus />
-        <label className="label mt-2">Type</label>
+        <label className="label">{t('Preset name')}</label>
+        <input className="field" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('My crypto sticker outline')} autoFocus />
+        <label className="label mt-2">{t('Type')}</label>
         <select className="field" value={saveKind} onChange={(e) => setSaveKind(e.target.value as PresetKind)}>
-          <option value="outline">Outline</option>
-          <option value="extract">Extraction</option>
-          <option value="canvas">Canvas</option>
-          <option value="export">Export</option>
-          <option value="batch">Batch</option>
+          <option value="outline">{t('Outline')}</option>
+          <option value="extract">{t('Extraction')}</option>
+          <option value="canvas">{t('Canvas')}</option>
+          <option value="export">{t('Export')}</option>
+          <option value="batch">{t('Batch')}</option>
         </select>
         <p className="mt-2 text-[11px] leading-relaxed text-[var(--text-faint)]">
-          The preset records its kind and a parameter snapshot. Names are local — nothing is published.
+          {t('The preset records its kind and a parameter snapshot. Names are local — nothing is published.')}
         </p>
       </Modal>
     </div>

@@ -57,7 +57,7 @@ test.describe('upload to library', () => {
     await expect(page.locator('text=Ready').first()).toBeVisible({ timeout: 180000 });
 
     // The matte source is reported honestly.
-    await expect(page.locator('text=/RVM neural matte|Colour fallback matte/')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('text=/Neural person matte|Colour fallback matte/').first()).toBeVisible({ timeout: 20000 });
 
     // Save the cutout to My Space.
     const saveButton = page.getByRole('button', { name: 'Save to My Space' });

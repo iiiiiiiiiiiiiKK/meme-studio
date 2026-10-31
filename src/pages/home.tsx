@@ -12,6 +12,7 @@ import {
   MousePointerClick,
 } from 'lucide-react';
 import { useUi } from '../state/ui';
+import { translate, timeAgo, useI18n } from '../i18n';
 import { useLibrary } from '../state/library';
 import { STARTER_ITEMS, type StarterItem } from '../lib/starter';
 import { formatBytes } from '../lib/image';
@@ -33,6 +34,7 @@ export function StarterThumb({ item, className }: { item: StarterItem; className
 }
 
 export function HomePage() {
+  const { t } = useI18n();
   const { navigate } = useUi();
   const { assets, projects } = useLibrary();
   const recentProjects = useMemo(() => projects.slice(0, 4), [projects]);
@@ -51,34 +53,32 @@ export function HomePage() {
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <span className="chip chip-active">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-                Local-first
+                {t('Local-first')}
               </span>
-              <span className="chip">No API key</span>
-              <span className="chip">No upload</span>
-              <span className="chip">Works offline</span>
+              <span className="chip">{t('No API key')}</span>
+              <span className="chip">{t('No upload')}</span>
+              <span className="chip">{t('Works offline')}</span>
             </div>
             <h1 className="text-[30px] font-semibold leading-[1.08] tracking-tight sm:text-[42px]">
-              Your personal
+              {t('Your personal')}
               <br />
-              meme asset factory.
+              {t('meme asset factory.')}
             </h1>
             <p className="mt-3 max-w-lg text-[13px] leading-relaxed text-[var(--text-dim)] sm:text-sm">
-              Cut a head out of any photo, wrap it in a real alpha outline, compose it on an infinite canvas with
-              captions and stickers, then batch the whole set. Everything runs in this browser tab — your images never
-              leave the device.
+              {t('Cut a head out of any photo, wrap it in a real alpha outline, compose it on an infinite canvas with captions and stickers, then batch the whole set. Everything runs in this browser tab — your images never leave the device.')}
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <button type="button" className="btn-primary" onClick={() => navigate('create')} data-testid="hero-create">
                 <Sparkles size={15} />
-                Create a meme
+                {t('Create a meme')}
               </button>
               <button type="button" className="btn" onClick={() => navigate('batch')}>
                 <Zap size={15} />
-                Batch process
+                {t('Batch process')}
               </button>
               <button type="button" className="btn" onClick={() => navigate('discover')}>
                 <LayersIcon size={15} />
-                Browse discovery
+                {t('Browse discovery')}
               </button>
             </div>
             <dl className="mt-6 grid max-w-md grid-cols-3 gap-2">
@@ -88,7 +88,7 @@ export function HomePage() {
                 { label: 'Local storage', value: formatBytes(totalSize) },
               ].map((stat) => (
                 <div key={stat.label} className="rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-2.5 py-2">
-                  <dt className="text-[10px] uppercase tracking-wide text-[var(--text-faint)]">{stat.label}</dt>
+                  <dt className="text-[10px] uppercase tracking-wide text-[var(--text-faint)]">{t(stat.label)}</dt>
                   <dd className="mt-0.5 font-mono text-sm">{stat.value}</dd>
                 </div>
               ))}
@@ -104,7 +104,7 @@ export function HomePage() {
                   onClick={() => navigate('discover')}
                   className="group relative overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-2 transition-transform hover:-translate-y-0.5"
                   style={{ transform: `rotate(${i % 2 === 0 ? -1.2 : 1.2}deg)` }}
-                  aria-label={`Open ${item.title}`}
+                  aria-label={t('Open {name}', { name: item.title })}
                 >
                   <span className="checker flex aspect-square items-center justify-center rounded-lg">
                     <StarterThumb item={item} className="h-full w-full object-contain p-1" />
@@ -114,7 +114,7 @@ export function HomePage() {
               ))}
             </div>
             <p className="mt-2.5 text-center text-[10px] text-[var(--text-faint)]">
-              12 starter stickers generated locally · free to remix
+              {t('12 starter stickers generated locally · free to remix')}
             </p>
           </div>
         </div>
@@ -122,44 +122,44 @@ export function HomePage() {
 
       <section className="mt-6">
         <SectionHeader
-          title="Start here"
-          hint="Every entry point below is wired to a working flow, not a mock."
+          title={t('Start here')}
+          hint={t('Every entry point below is wired to a working flow, not a mock.')}
         />
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           <QuickAction
             icon={<ImagePlus size={16} />}
-            title="Open an image"
-            body="Drop a photo, paste from the clipboard or pick a file. Nothing is uploaded."
+            title={t('Open an image')}
+            body={t('Drop a photo, paste from the clipboard or pick a file. Nothing is uploaded.')}
             onClick={() => navigate('create')}
           />
           <QuickAction
             icon={<Wand2 size={16} />}
-            title="Extract a head"
-            body="FaceMesh picks the person; the RVM matte shapes hair and ears."
+            title={t('Extract a head')}
+            body={t('FaceMesh picks the person; the RVM matte shapes hair and ears.')}
             onClick={() => navigate('create')}
           />
           <QuickAction
             icon={<Zap size={16} />}
-            title="Batch a folder"
-            body="Queue dozens of images, retry failures, export a single ZIP."
+            title={t('Batch a folder')}
+            body={t('Queue dozens of images, retry failures, export a single ZIP.')}
             onClick={() => navigate('batch')}
           />
           <QuickAction
             icon={<LayersIcon size={16} />}
-            title="Compose on canvas"
-            body="Layers, outlines, text, stickers and true transparent PNG export."
+            title={t('Compose on canvas')}
+            body={t('Layers, outlines, text, stickers and true transparent PNG export.')}
             onClick={() => navigate('create')}
           />
           <QuickAction
             icon={<FolderOpen size={16} />}
-            title="My Space"
-            body="Your local asset library with folders, tags, favorites and trash."
+            title={t('My Space')}
+            body={t('Your local asset library with folders, tags, favorites and trash.')}
             onClick={() => navigate('library')}
           />
           <QuickAction
             icon={<Cpu size={16} />}
-            title="Templates"
-            body="Reusable presets for outlines, extraction modes and batch runs."
+            title={t('Templates')}
+            body={t('Reusable presets for outlines, extraction modes and batch runs.')}
             onClick={() => navigate('templates')}
           />
         </div>
@@ -168,12 +168,12 @@ export function HomePage() {
       <section className="mt-7 grid gap-6 lg:grid-cols-[1.3fr_1fr]">
         <div>
           <SectionHeader
-            title="Recent projects"
-            hint="Saved in IndexedDB on this device."
+            title={t('Recent projects')}
+            hint={t('Saved in IndexedDB on this device.')}
             action={
               projects.length ? (
                 <button type="button" className="btn-ghost text-[11px]" onClick={() => navigate('library')}>
-                  Open My Space <ArrowRight size={13} />
+                  {t('Open My Space')} <ArrowRight size={13} />
                 </button>
               ) : null
             }
@@ -181,11 +181,11 @@ export function HomePage() {
           {recentProjects.length === 0 ? (
             <EmptyState
               icon={<LayersIcon size={22} />}
-              title="No projects yet"
-              body="Create one from an image or start from a blank canvas — it will be saved locally and appear here."
+              title={t('No projects yet')}
+              body={t('Create one from an image or start from a blank canvas — it will be saved locally and appear here.')}
               action={
                 <button type="button" className="btn-primary" onClick={() => navigate('create')}>
-                  <Sparkles size={15} /> Start a project
+                  <Sparkles size={15} /> {t('Start a project')}
                 </button>
               }
             />
@@ -199,12 +199,12 @@ export function HomePage() {
         </div>
 
         <div>
-          <SectionHeader title="On this device" hint="Latest cutouts and stickers." />
+          <SectionHeader title={t('On this device')} hint={t('Latest cutouts and stickers.')} />
           {stickers.length === 0 ? (
             <EmptyState
               icon={<ShieldCheck size={22} />}
-              title="Nothing cut out yet"
-              body="Your first head sticker will show up here. It stays on this device until you export it."
+              title={t('Nothing cut out yet')}
+              body={t('Your first head sticker will show up here. It stays on this device until you export it.')}
             />
           ) : (
             <div className="grid grid-cols-3 gap-2">
@@ -217,7 +217,7 @@ export function HomePage() {
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="How it works" hint="Four steps, zero uploads." />
+        <SectionHeader title={t('How it works')} hint={t('Four steps, zero uploads.')} />
         <ol className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: <MousePointerClick size={15} />, title: 'Drop an image', body: 'File, drag, paste or URL.' },
@@ -230,8 +230,8 @@ export function HomePage() {
                 {step.icon}
                 <span className="font-mono text-[10px] text-[var(--text-faint)]">0{index + 1}</span>
               </div>
-              <p className="mt-2 text-sm font-medium">{step.title}</p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-faint)]">{step.body}</p>
+              <p className="mt-2 text-sm font-medium">{t(step.title)}</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-faint)]">{t(step.body)}</p>
             </li>
           ))}
         </ol>
@@ -272,6 +272,7 @@ function QuickAction({
 }
 
 export function ProjectCard({ project }: { project: { id: string; name: string; thumb: Blob | null; updatedAt: number; width: number; height: number } }) {
+  const { locale } = useI18n();
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!project.thumb) {
@@ -300,7 +301,7 @@ export function ProjectCard({ project }: { project: { id: string; name: string; 
         <span className="min-w-0">
           <span className="block truncate text-[12px] font-medium">{project.name}</span>
           <span className="block text-[10px] text-[var(--text-faint)]">
-            {project.width}×{project.height} · {timeAgo(project.updatedAt)}
+            {project.width}×{project.height} · {timeAgo(locale, project.updatedAt)}
           </span>
         </span>
         <ArrowRight size={13} className="shrink-0 text-[var(--text-faint)]" />
@@ -333,7 +334,8 @@ export async function openProject(id: string): Promise<void> {
   const { useUi } = await import('../state/ui');
   const project = await getProject(id);
   if (!project) {
-    useUi.getState().toast('That project no longer exists on this device.', 'error');
+    const { locale } = useUi.getState();
+    useUi.getState().toast(translate(locale, 'That project no longer exists on this device.'), 'error');
     return;
   }
   useEditor.getState().setProject({
@@ -349,18 +351,6 @@ export async function openProject(id: string): Promise<void> {
     },
   });
   useUi.getState().navigate('editor');
-}
-
-export function timeAgo(timestamp: number): string {
-  const diff = Date.now() - timestamp;
-  const minute = 60_000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  if (diff < minute) return 'just now';
-  if (diff < hour) return `${Math.floor(diff / minute)}m ago`;
-  if (diff < day) return `${Math.floor(diff / hour)}h ago`;
-  if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`;
-  return new Date(timestamp).toLocaleDateString();
 }
 
 export { assetUrl };

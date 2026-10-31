@@ -30,6 +30,7 @@ import {
   AlignHorizontalJustifyCenter,
 } from 'lucide-react';
 import { useEditor, createTextLayer, createShapeLayer, createImageLayer } from '../state/editor';
+import { useI18n } from '../i18n';
 import { useUi } from '../state/ui';
 import { storeCanvasAsAsset } from '../state/library';
 import { renderScene, DEFAULT_EXPORT, type ExportOptions } from '../lib/render';
@@ -52,6 +53,7 @@ interface DragState {
 }
 
 export function EditorPage() {
+  const { t } = useI18n();
   const editor = useEditor();
   const { navigate, toast } = useUi();
   const [exportOpen, setExportOpen] = useState(false);
@@ -91,18 +93,18 @@ export function EditorPage() {
     async (silent = false) => {
       const state = useEditor.getState();
       if (!state.projectId) {
-        toast('This editor has no project id. Start from Create first.', 'error');
+        toast(t('This editor has no project id. Start from Create first.'), 'error');
         return;
       }
       try {
         const canvas = await renderScene(state.layers, state.settings, { transparent: true });
         await state.save(canvas);
-        if (!silent) toast('Project saved to this device.', 'success');
+        if (!silent) toast(t('Project saved to this device.'), 'success');
       } catch (error) {
-        toast('Saving failed', 'error', error instanceof Error ? error.message : String(error));
+        toast(t('Saving failed'), 'error', error instanceof Error ? error.message : String(error));
       }
     },
-    [toast],
+    [t, toast],
   );
 
   // autosave
@@ -296,7 +298,7 @@ export function EditorPage() {
   async function addImageFile(file: File | null) {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      toast('That file is not an image.', 'error');
+      toast(t('That file is not an image.'), 'error');
       return;
     }
     try {
@@ -333,9 +335,9 @@ export function EditorPage() {
           name: file.name,
         }),
       );
-      toast('Image added as a layer.', 'success');
+      toast(t('Image added as a layer.'), 'success');
     } catch (error) {
-      toast('Could not add that image', 'error', error instanceof Error ? error.message : String(error));
+      toast(t('Could not add that image'), 'error', error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -355,7 +357,7 @@ export function EditorPage() {
       );
       setExportSize(blob.size);
     } catch (error) {
-      toast('Preview failed', 'error', error instanceof Error ? error.message : String(error));
+      toast(t('Preview failed'), 'error', error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -372,10 +374,10 @@ export function EditorPage() {
       const blob = await canvasToBlob(canvas, mime, exportOptions.format === 'png' ? undefined : 0.92);
       const ext = exportOptions.format === 'jpeg' ? 'jpg' : exportOptions.format;
       downloadBlob(blob, `${(editor.projectName || 'meme').replace(/\s+/g, '-').toLowerCase()}.${ext}`);
-      toast(`Exported ${canvas.width}×${canvas.height} ${exportOptions.format.toUpperCase()} · ${formatBytes(blob.size)}`, 'success');
+      toast(t('Exported {w}×{h} {format} · {size}', { w: canvas.width, h: canvas.height, format: exportOptions.format.toUpperCase(), size: formatBytes(blob.size) }), 'success');
       setExportOpen(false);
     } catch (error) {
-      toast('Export failed', 'error', error instanceof Error ? error.message : String(error));
+      toast(t('Export failed'), 'error', error instanceof Error ? error.message : String(error));
     } finally {
       setExportBusy(false);
     }
@@ -387,7 +389,7 @@ export function EditorPage() {
     const canvas = await renderSingleLayer(selected, editor.settings);
     const blob = await canvasToBlob(canvas, 'image/png');
     downloadBlob(blob, `${selected.name.replace(/\s+/g, '-').toLowerCase()}.png`);
-    toast('Layer exported with transparency.', 'success');
+    toast(t('Layer exported with transparency.'), 'success');
   }
 
   // wheel zoom / pinch
@@ -408,12 +410,12 @@ export function EditorPage() {
   if (!editor.projectId) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-        <h1 className="text-lg font-semibold">No project open</h1>
+        <h1 className="text-lg font-semibold">{t('No project open')}</h1>
         <p className="mt-2 text-[12px] text-[var(--text-dim)]">
-          The editor needs a project. Create one from an image, a blank canvas or a cutout first.
+          {t('The editor needs a project. Create one from an image, a blank canvas or a cutout first.')}
         </p>
         <button type="button" className="btn-primary mt-4" onClick={() => navigate('create')}>
-          Go to Create
+          {t('Go to Create')}
         </button>
       </div>
     );
@@ -427,50 +429,50 @@ export function EditorPage() {
           className="w-32 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-[13px] font-medium outline-none hover:border-[var(--line)] focus:border-[var(--accent)] sm:w-48"
           value={editor.projectName}
           onChange={(e) => editor.rename(e.target.value)}
-          aria-label="Project name"
+          aria-label={t('Project name')}
         />
         <span className="mx-1 hidden h-4 w-px bg-[var(--line)] sm:block" />
-        <button type="button" className="icon-btn" onClick={editor.undo} disabled={!editor.history.length} aria-label="Undo" title="Undo (Ctrl+Z)">
+        <button type="button" className="icon-btn" onClick={editor.undo} disabled={!editor.history.length} aria-label={t('Undo')} title={t('Undo (Ctrl+Z)')}>
           <Undo2 size={15} />
         </button>
-        <button type="button" className="icon-btn" onClick={editor.redo} disabled={!editor.future.length} aria-label="Redo" title="Redo (Ctrl+Shift+Z)">
+        <button type="button" className="icon-btn" onClick={editor.redo} disabled={!editor.future.length} aria-label={t('Redo')} title={t('Redo (Ctrl+Shift+Z)')}>
           <Redo2 size={15} />
         </button>
         <span className="mx-1 hidden h-4 w-px bg-[var(--line)] sm:block" />
-        <button type="button" className="icon-btn" onClick={() => void addTextLayer()} aria-label="Add text" title="Add text layer" data-testid="add-text-layer">
+        <button type="button" className="icon-btn" onClick={() => void addTextLayer()} aria-label={t('Add text')} title={t('Add text layer')} data-testid="add-text-layer">
           <Type size={15} />
         </button>
-        <button type="button" className="icon-btn" onClick={() => addShape('rect')} aria-label="Add rectangle" title="Add rectangle" data-testid="add-rect-layer">
+        <button type="button" className="icon-btn" onClick={() => addShape('rect')} aria-label={t('Add rectangle')} title={t('Add rectangle')} data-testid="add-rect-layer">
           <Square size={15} />
         </button>
-        <button type="button" className="icon-btn" onClick={() => addShape('ellipse')} aria-label="Add ellipse" title="Add ellipse" data-testid="add-ellipse-layer">
+        <button type="button" className="icon-btn" onClick={() => addShape('ellipse')} aria-label={t('Add ellipse')} title={t('Add ellipse')} data-testid="add-ellipse-layer">
           <Circle size={15} />
         </button>
-        <label className="icon-btn cursor-pointer" title="Add image layer" aria-label="Add image layer">
+        <label className="icon-btn cursor-pointer" title={t('Add image layer')} aria-label={t('Add image layer')}>
           <ImageIcon size={15} />
           <input type="file" accept="image/*" className="hidden" onChange={(e) => void addImageFile(e.target.files?.[0] ?? null)} />
         </label>
 
         <div className="ml-auto flex items-center gap-1">
           <div className="hidden items-center gap-1 rounded-lg border border-[var(--line)] px-1 sm:flex">
-            <button type="button" className="icon-btn h-7 w-7" onClick={() => editor.setView(Math.max(0.08, editor.zoom / 1.15), editor.panX, editor.panY)} aria-label="Zoom out">
+            <button type="button" className="icon-btn h-7 w-7" onClick={() => editor.setView(Math.max(0.08, editor.zoom / 1.15), editor.panX, editor.panY)} aria-label={t('Zoom out')}>
               <Minus size={13} />
             </button>
             <span className="w-10 text-center font-mono text-[11px] text-[var(--text-dim)]">{Math.round(editor.zoom * 100)}%</span>
-            <button type="button" className="icon-btn h-7 w-7" onClick={() => editor.setView(Math.min(4, editor.zoom * 1.15), editor.panX, editor.panY)} aria-label="Zoom in">
+            <button type="button" className="icon-btn h-7 w-7" onClick={() => editor.setView(Math.min(4, editor.zoom * 1.15), editor.panX, editor.panY)} aria-label={t('Zoom in')}>
               <Plus size={13} />
             </button>
           </div>
-          <button type="button" className="icon-btn" onClick={fit} aria-label="Fit to screen" title="Fit">
+          <button type="button" className="icon-btn" onClick={fit} aria-label={t('Fit to screen')} title={t('Fit')}>
             <Maximize2 size={15} />
           </button>
           <button type="button" className="btn h-8 px-2.5 text-[12px]" onClick={() => void performSave()} disabled={editor.saving} data-testid="editor-save">
             {editor.saving ? <Spinner size={13} /> : <Save size={13} />}
-            <span className="hidden sm:inline">Save</span>
+            <span className="hidden sm:inline">{t('Save')}</span>
           </button>
           <button type="button" className="btn-primary h-8 px-2.5 text-[12px]" onClick={() => void openExport()} data-testid="editor-export">
             <Download size={13} />
-            <span className="hidden sm:inline">Export</span>
+            <span className="hidden sm:inline">{t('Export')}</span>
           </button>
         </div>
       </div>
@@ -479,7 +481,7 @@ export function EditorPage() {
         {/* left rail: layers */}
         <aside className="hidden w-[210px] shrink-0 flex-col border-r border-[var(--line)] bg-[var(--bg-soft)] md:flex">
           <div className="flex items-center justify-between px-2.5 py-2">
-            <span className="section-title">Layers</span>
+            <span className="section-title">{t('Layers')}</span>
             <span className="font-mono text-[10px] text-[var(--text-faint)]">{editor.layers.length}</span>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
@@ -488,14 +490,14 @@ export function EditorPage() {
             ))}
             {editor.layers.length === 0 ? (
               <p className="px-2 py-6 text-center text-[11px] leading-relaxed text-[var(--text-faint)]">
-                No layers yet. Add text, shapes, or send a sticker from Create.
+                {t('No layers yet. Add text, shapes, or send a sticker from Create.')}
               </p>
             ) : null}
           </div>
           <div className="border-t border-[var(--line)] p-1.5">
             <div className="grid grid-cols-1 gap-1">
               <button type="button" className="btn-ghost justify-start text-[11px]" onClick={() => void exportLayer()} disabled={!selected}>
-                <Download size={12} /> Export selected layer
+                <Download size={12} /> {t('Export selected layer')}
               </button>
             </div>
           </div>
@@ -568,14 +570,14 @@ export function EditorPage() {
 
           <div className="pointer-events-none absolute bottom-3 left-3 hidden items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel)]/90 px-2 py-1 text-[10px] text-[var(--text-faint)] backdrop-blur sm:flex">
             <MousePointerSquareDashed size={11} />
-            {width}×{height} · {editor.layers.length} layer{editor.layers.length === 1 ? '' : 's'} · {Math.round(editor.zoom * 100)}%
+            {t('{w}×{h} · {count} layers · {pct}%', { w: width, h: height, count: editor.layers.length, pct: Math.round(editor.zoom * 100) })}
           </div>
           <button
             type="button"
             className="absolute bottom-3 right-3 rounded-lg border border-[var(--line)] bg-[var(--panel)]/90 px-2 py-1 text-[10px] text-[var(--text-faint)] backdrop-blur hover:text-[var(--text)]"
             onClick={() => setShortcutsOpen(true)}
           >
-            Shortcuts
+            {t('Shortcuts')}
           </button>
         </div>
 
@@ -594,7 +596,7 @@ export function EditorPage() {
                 <ChevronDown size={13} className="transition-transform group-open:rotate-180" />
                 {selected.name}
               </span>
-              <span className="text-[10px] text-[var(--text-faint)]">Properties</span>
+              <span className="text-[10px] text-[var(--text-faint)]">{t('Properties')}</span>
             </summary>
             <div className="max-h-[42vh] overflow-y-auto px-3 pb-3">
               <Inspector layer={selected} compact />
@@ -606,33 +608,33 @@ export function EditorPage() {
       <Modal
         open={exportOpen}
         onClose={() => setExportOpen(false)}
-        title="Export canvas"
+        title={t('Export canvas')}
         footer={
           <>
             <button type="button" className="btn text-[12px]" onClick={() => setExportOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" className="btn-primary text-[12px]" onClick={() => void doExport()} disabled={exportBusy}>
-              {exportBusy ? <Spinner size={13} /> : <Download size={13} />} Export
+              {exportBusy ? <Spinner size={13} /> : <Download size={13} />} {t('Export')}
             </button>
           </>
         }
       >
         <div className="space-y-2">
           <div>
-            <span className="label">Format</span>
+            <span className="label">{t('Format')}</span>
             <Segmented
               value={exportOptions.format}
               onChange={(format) => setExportOptions({ ...exportOptions, format })}
               options={[
-                { value: 'png', label: 'PNG · alpha' },
+                { value: 'png', label: t('PNG · alpha') },
                 { value: 'jpeg', label: 'JPEG' },
                 { value: 'webp', label: 'WebP' },
               ]}
             />
           </div>
           <div>
-            <span className="label">Scale</span>
+            <span className="label">{t('Scale')}</span>
             <Segmented
               value={String(exportOptions.scale)}
               onChange={(value) => setExportOptions({ ...exportOptions, scale: Number(value) })}
@@ -648,12 +650,12 @@ export function EditorPage() {
               <Toggle
                 checked={exportOptions.transparent}
                 onChange={(transparent) => setExportOptions({ ...exportOptions, transparent })}
-                label="Transparent background"
-                hint="JPEG has no alpha channel; WebP does."
+                label={t('Transparent background')}
+                hint={t('JPEG has no alpha channel; WebP does.')}
               />
               {!exportOptions.transparent ? (
                 <ColorField
-                  label="Background"
+                  label={t('Background')}
                   value={exportOptions.background}
                   onChange={(background) => setExportOptions({ ...exportOptions, background })}
                 />
@@ -662,17 +664,19 @@ export function EditorPage() {
           ) : null}
           <div className="rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 text-[11px] text-[var(--text-dim)]">
             <p>
-              Output: {width * exportOptions.scale} × {height * exportOptions.scale} px
+              {t('Output: {w} × {h} px', { w: width * exportOptions.scale, h: height * exportOptions.scale })}
             </p>
-            <p className="mt-0.5">Estimated size: {exportSize === null ? 'calculating…' : formatBytes(exportSize)}</p>
+            <p className="mt-0.5">
+              {t('Estimated size: {size}', { size: exportSize === null ? t('calculating') : formatBytes(exportSize) })}
+            </p>
             <p className="mt-1 text-[10px] text-[var(--text-faint)]">
-              PNG keeps true alpha — the checkerboard you see on the stage is never baked in.
+              {t('PNG keeps true alpha — the checkerboard you see on the stage is never baked in.')}
             </p>
           </div>
         </div>
       </Modal>
 
-      <Modal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} title="Keyboard shortcuts">
+      <Modal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} title={t('Keyboard shortcuts')}>
         <ul className="space-y-1.5 text-[12px]">
           {[
             ['Ctrl / ⌘ + Z', 'Undo'],
@@ -688,7 +692,7 @@ export function EditorPage() {
           ].map(([key, action]) => (
             <li key={key} className="flex items-center justify-between gap-3 border-b border-[var(--line)] pb-1.5">
               <span className="kbd font-mono">{key}</span>
-              <span className="text-[var(--text-dim)]">{action}</span>
+              <span className="text-[var(--text-dim)]">{t(action)}</span>
             </li>
           ))}
         </ul>
@@ -710,6 +714,7 @@ function LayerView({
   onPointerDown: (e: React.PointerEvent) => void;
   onHandle: (e: React.PointerEvent, handle: Handle) => void;
 }) {
+  const { t } = useI18n();
   const style: React.CSSProperties = {
     position: 'absolute',
     left: layer.x,
@@ -758,7 +763,7 @@ function LayerView({
             <button
               key={h.id}
               type="button"
-              aria-label={`Resize ${h.id}`}
+              aria-label={t('Resize {dir}', { dir: h.id ?? '' })}
               className="absolute z-10 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-[2px] border border-black/40 bg-[var(--accent)]"
               style={{ left: h.x, top: h.y, cursor: h.cursor }}
               onPointerDown={(e) => onHandle(e, h.id)}
@@ -766,7 +771,7 @@ function LayerView({
           ))}
           <button
             type="button"
-            aria-label="Rotate layer"
+            aria-label={t('Rotate layer')}
             className="absolute left-1/2 z-10 grid h-6 w-6 -translate-x-1/2 place-items-center rounded-full border border-black/40 bg-[var(--accent)] text-[var(--accent-ink)]"
             style={{ top: -30 }}
             onPointerDown={(e) => onHandle(e, 'rot')}
@@ -831,6 +836,7 @@ function ShapeRender({ layer }: { layer: Layer }) {
 }
 
 function LayerRow({ layer, active }: { layer: Layer; active: boolean }) {
+  const { t } = useI18n();
   const editor = useEditor();
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(layer.name);
@@ -843,10 +849,10 @@ function LayerRow({ layer, active }: { layer: Layer; active: boolean }) {
       )}
       style={active ? { boxShadow: 'inset 2px 0 0 var(--accent)' } : undefined}
     >
-      <button type="button" className="icon-btn h-6 w-6 shrink-0" onClick={() => editor.toggleVisible(layer.id)} aria-label={layer.visible ? 'Hide layer' : 'Show layer'}>
+      <button type="button" className="icon-btn h-6 w-6 shrink-0" onClick={() => editor.toggleVisible(layer.id)} aria-label={layer.visible ? t('Hide layer') : t('Show layer')}>
         {layer.visible ? <Eye size={11} /> : <EyeOff size={11} />}
       </button>
-      <button type="button" className="icon-btn h-6 w-6 shrink-0" onClick={() => editor.toggleLocked(layer.id)} aria-label={layer.locked ? 'Unlock layer' : 'Lock layer'}>
+      <button type="button" className="icon-btn h-6 w-6 shrink-0" onClick={() => editor.toggleLocked(layer.id)} aria-label={layer.locked ? t('Unlock layer') : t('Lock layer')}>
         {layer.locked ? <Lock size={11} /> : <Unlock size={11} />}
       </button>
       <button type="button" className="flex min-w-0 flex-1 items-center gap-1 text-left" onClick={() => editor.select(layer.id)} onDoubleClick={() => setRenaming(true)}>
@@ -870,16 +876,16 @@ function LayerRow({ layer, active }: { layer: Layer; active: boolean }) {
           <span className="truncate">{layer.name}</span>
         )}
       </button>
-      <button type="button" className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => editor.moveUp(layer.id)} aria-label="Move layer up">
+      <button type="button" className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => editor.moveUp(layer.id)} aria-label={t('Move layer up')}>
         <ArrowUp size={11} />
       </button>
-      <button type="button" className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => editor.moveDown(layer.id)} aria-label="Move layer down">
+      <button type="button" className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => editor.moveDown(layer.id)} aria-label={t('Move layer down')}>
         <ArrowDown size={11} />
       </button>
-      <button type="button" className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => editor.duplicateLayer(layer.id)} aria-label="Duplicate layer">
+      <button type="button" className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => editor.duplicateLayer(layer.id)} aria-label={t('Duplicate layer')}>
         <Copy size={11} />
       </button>
-      <button type="button" className="icon-btn h-6 w-6 text-[var(--danger)] opacity-0 group-hover:opacity-100" onClick={() => editor.removeLayer(layer.id)} aria-label="Delete layer">
+      <button type="button" className="icon-btn h-6 w-6 text-[var(--danger)] opacity-0 group-hover:opacity-100" onClick={() => editor.removeLayer(layer.id)} aria-label={t('Delete layer')}>
         <Trash2 size={11} />
       </button>
     </div>
@@ -887,34 +893,35 @@ function LayerRow({ layer, active }: { layer: Layer; active: boolean }) {
 }
 
 function Inspector({ layer, compact }: { layer: Layer | null; compact?: boolean }) {
+  const { t } = useI18n();
   const editor = useEditor();
   if (!layer) {
     return (
       <div className="px-3 py-6 text-center text-[11px] leading-relaxed text-[var(--text-faint)]">
-        Select a layer to edit its properties.
+        {t('Select a layer to edit its properties.')}
       </div>
     );
   }
   return (
     <div className={compact ? '' : 'p-3'}>
-      {!compact ? <p className="section-title mb-2">Properties</p> : null}
+      {!compact ? <p className="section-title mb-2">{t('Properties')}</p> : null}
       <div className="grid grid-cols-2 gap-2">
         <NumberField label="X" value={layer.x} onChange={(x) => editor.updateLayer(layer.id, { x })} />
         <NumberField label="Y" value={layer.y} onChange={(y) => editor.updateLayer(layer.id, { y })} />
         <NumberField label="W" value={layer.width} onChange={(width) => editor.updateLayer(layer.id, { width: Math.max(4, width) })} />
         <NumberField label="H" value={layer.height} onChange={(height) => editor.updateLayer(layer.id, { height: Math.max(4, height) })} />
       </div>
-      <Slider label="Rotation" value={Math.round(layer.rotation)} min={-180} max={180} unit="°" onChange={(rotation) => editor.updateLayer(layer.id, { rotation })} />
-      <Slider label="Opacity" value={Math.round(layer.opacity * 100)} min={0} max={100} unit="%" onChange={(v) => editor.updateLayer(layer.id, { opacity: v / 100 })} />
+      <Slider label={t('Rotation')} value={Math.round(layer.rotation)} min={-180} max={180} unit="°" onChange={(rotation) => editor.updateLayer(layer.id, { rotation })} />
+      <Slider label={t('Opacity')} value={Math.round(layer.opacity * 100)} min={0} max={100} unit="%" onChange={(v) => editor.updateLayer(layer.id, { opacity: v / 100 })} />
 
       {layer.type === 'text' && layer.text ? (
         <div className="mt-2 border-t border-[var(--line)] pt-2">
-          <p className="section-title mb-1.5">Text</p>
+          <p className="section-title mb-1.5">{t('Text')}</p>
           <textarea
             className="field min-h-[64px] resize-y font-mono text-[12px]"
             value={layer.text.content}
             onChange={(e) => editor.updateLayerData(layer.id, { text: { content: e.target.value } as never })}
-            aria-label="Text content"
+            aria-label={t('Text content')}
             data-testid="text-layer-content"
           />
           <div className="mt-2 flex gap-1">
@@ -922,7 +929,7 @@ function Inspector({ layer, compact }: { layer: Layer | null; compact?: boolean 
               type="button"
               className={cx('icon-btn h-8 w-8 border', layer.text.bold ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-[var(--line)]')}
               onClick={() => editor.updateLayerData(layer.id, { text: { bold: !layer.text?.bold } as never })}
-              aria-label="Bold"
+              aria-label={t('Bold')}
             >
               <Bold size={13} />
             </button>
@@ -930,7 +937,7 @@ function Inspector({ layer, compact }: { layer: Layer | null; compact?: boolean 
               type="button"
               className={cx('icon-btn h-8 w-8 border', layer.text.italic ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-[var(--line)]')}
               onClick={() => editor.updateLayerData(layer.id, { text: { italic: !layer.text?.italic } as never })}
-              aria-label="Italic"
+              aria-label={t('Italic')}
             >
               <Italic size={13} />
             </button>
@@ -948,14 +955,14 @@ function Inspector({ layer, compact }: { layer: Layer | null; compact?: boolean 
             </div>
           </div>
           <Slider
-            label="Font size"
+            label={t('Font size')}
             value={layer.text.fontSize}
             min={8}
             max={320}
             onChange={(fontSize) => editor.updateLayerData(layer.id, { text: { fontSize } as never })}
           />
           <Slider
-            label="Line height"
+            label={t('Line height')}
             value={Number(layer.text.lineHeight.toFixed(2))}
             min={0.8}
             max={2.4}
@@ -963,44 +970,44 @@ function Inspector({ layer, compact }: { layer: Layer | null; compact?: boolean 
             onChange={(lineHeight) => editor.updateLayerData(layer.id, { text: { lineHeight } as never })}
           />
           <Slider
-            label="Letter spacing"
+            label={t('Letter spacing')}
             value={layer.text.letterSpacing}
             min={-10}
             max={40}
             onChange={(letterSpacing) => editor.updateLayerData(layer.id, { text: { letterSpacing } as never })}
           />
           <ColorField
-            label="Fill"
+            label={t('Fill')}
             value={layer.text.color}
             onChange={(color) => editor.updateLayerData(layer.id, { text: { color } as never })}
           />
           <Slider
-            label="Stroke width"
+            label={t('Stroke width')}
             value={layer.text.strokeWidth}
             min={0}
             max={32}
             onChange={(strokeWidth) => editor.updateLayerData(layer.id, { text: { strokeWidth } as never })}
           />
           <ColorField
-            label="Stroke color"
+            label={t('Stroke color')}
             value={layer.text.strokeColor}
             onChange={(strokeColor) => editor.updateLayerData(layer.id, { text: { strokeColor } as never })}
           />
           <Toggle
             checked={layer.text.uppercase}
             onChange={(uppercase) => editor.updateLayerData(layer.id, { text: { uppercase } as never })}
-            label="Uppercase"
+            label={t('Uppercase')}
           />
         </div>
       ) : null}
 
       {layer.type === 'shape' && layer.shape ? (
         <div className="mt-2 border-t border-[var(--line)] pt-2">
-          <p className="section-title mb-1.5">Shape</p>
-          <ColorField label="Fill" value={layer.shape.fill} onChange={(fill) => editor.updateLayerData(layer.id, { shape: { fill } as never })} />
+          <p className="section-title mb-1.5">{t('Shape')}</p>
+          <ColorField label={t('Fill')} value={layer.shape.fill} onChange={(fill) => editor.updateLayerData(layer.id, { shape: { fill } as never })} />
           {layer.shape.kind === 'rect' ? (
             <Slider
-              label="Corner radius"
+              label={t('Corner radius')}
               value={layer.shape.radius}
               min={0}
               max={320}
@@ -1013,10 +1020,10 @@ function Inspector({ layer, compact }: { layer: Layer | null; compact?: boolean 
       <div className="mt-2 border-t border-[var(--line)] pt-2">
         <div className="grid grid-cols-2 gap-1.5">
           <button type="button" className="btn h-8 text-[11px]" onClick={() => editor.moveUp(layer.id)}>
-            <ArrowUp size={12} /> Forward
+            <ArrowUp size={12} /> {t('Forward')}
           </button>
           <button type="button" className="btn h-8 text-[11px]" onClick={() => editor.moveDown(layer.id)}>
-            <ArrowDown size={12} /> Back
+            <ArrowDown size={12} /> {t('Back')}
           </button>
           <button
             type="button"
@@ -1025,7 +1032,7 @@ function Inspector({ layer, compact }: { layer: Layer | null; compact?: boolean 
               editor.updateLayer(layer.id, { x: Math.round((editor.settings.width - layer.width) / 2) });
             }}
           >
-            <AlignHorizontalJustifyCenter size={12} /> Center X
+            <AlignHorizontalJustifyCenter size={12} /> {t('Center X')}
           </button>
           <button
             type="button"
@@ -1034,7 +1041,7 @@ function Inspector({ layer, compact }: { layer: Layer | null; compact?: boolean 
               editor.updateLayer(layer.id, { y: Math.round((editor.settings.height - layer.height) / 2) });
             }}
           >
-            <AlignHorizontalJustifyCenter size={12} className="rotate-90" /> Center Y
+            <AlignHorizontalJustifyCenter size={12} className="rotate-90" /> {t('Center Y')}
           </button>
         </div>
         <button
@@ -1042,7 +1049,7 @@ function Inspector({ layer, compact }: { layer: Layer | null; compact?: boolean 
           className="btn-danger mt-1.5 h-8 w-full justify-center text-[11px]"
           onClick={() => editor.removeLayer(layer.id)}
         >
-          <Trash2 size={12} /> Delete layer
+          <Trash2 size={12} /> {t('Delete layer')}
         </button>
       </div>
     </div>
@@ -1068,13 +1075,14 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
 }
 
 function CanvasSettingsPanel() {
+  const { t } = useI18n();
   const editor = useEditor();
   const [open, setOpen] = useState(false);
   return (
     <>
       <div className="flex items-center gap-2 border-t border-[var(--line)] px-2 py-1 lg:hidden">
         <button type="button" className="btn-ghost text-[11px]" onClick={() => setOpen((o) => !o)}>
-          <Layers size={12} /> Canvas
+          <Layers size={12} /> {t('Canvas')}
         </button>
         <span className="text-[10px] text-[var(--text-faint)]">
           {editor.settings.width}×{editor.settings.height}
@@ -1107,40 +1115,41 @@ function CanvasSettingsPanel() {
 }
 
 function CanvasFields() {
+  const { t } = useI18n();
   const editor = useEditor();
   return (
     <div>
       <div className="grid grid-cols-2 gap-2">
-        <NumberField label="Canvas W" value={editor.settings.width} onChange={(width) => editor.setSettings({ width: Math.max(32, width) })} />
-        <NumberField label="Canvas H" value={editor.settings.height} onChange={(height) => editor.setSettings({ height: Math.max(32, height) })} />
+        <NumberField label={t('Canvas W')} value={editor.settings.width} onChange={(width) => editor.setSettings({ width: Math.max(32, width) })} />
+        <NumberField label={t('Canvas H')} value={editor.settings.height} onChange={(height) => editor.setSettings({ height: Math.max(32, height) })} />
       </div>
       <Toggle
         checked={editor.settings.grid}
         onChange={(grid) => editor.setSettings({ grid })}
-        label="Grid overlay"
+        label={t('Grid overlay')}
       />
       <Toggle
         checked={editor.settings.snap}
         onChange={(snap) => editor.setSettings({ snap })}
-        label="Snap to center"
-        hint="Snaps layers to the canvas center guides while dragging."
+        label={t('Snap to center')}
+        hint={t('Snaps layers to the canvas center guides while dragging.')}
       />
       <div className="mt-1 flex items-center justify-between gap-2">
-        <span className="text-sm">Background</span>
+        <span className="text-sm">{t('Background')}</span>
         <span className="flex items-center gap-1.5">
           <button
             type="button"
             className={cx('chip', !editor.settings.background && 'chip-active')}
             onClick={() => editor.setSettings({ background: null })}
           >
-            Transparent
+            {t('Transparent')}
           </button>
           <input
             type="color"
             className="h-8 w-9"
             value={editor.settings.background ?? '#0b0d12'}
             onChange={(e) => editor.setSettings({ background: e.target.value })}
-            aria-label="Canvas background color"
+            aria-label={t('Canvas background color')}
           />
         </span>
       </div>

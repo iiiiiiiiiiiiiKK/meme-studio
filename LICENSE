@@ -30,5 +30,8 @@ Third-party components bundled with this project keep their own licences:
 - TensorFlow.js and TensorFlow (Apache-2.0) — model runtime.
 - The RVM weights shipped in `public/models/rvm.*` originate from the
   Robust Video Matting project (MIT licence, PeterL1n/RobustVideoMatting).
+  They are bundled as an alternative segmentation model; the default matte is
+  MediaPipe Selfie Segmentation because the TensorFlow.js RVM graph returns an
+  empty alpha for still images in this build.
 - BlazeFace and FaceMesh weights originate from MediaPipe (Apache-2.0).
 - React, Zustand, lucide-react, idb and JSZip are used under the MIT licence.

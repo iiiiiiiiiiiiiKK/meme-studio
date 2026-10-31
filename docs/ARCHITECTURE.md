@@ -19,7 +19,7 @@ This document describes how Meme Studio is put together and, more importantly, *
 │        ├──────────────► lib/ai.ts  ──► @vladmandic/human      │
 │        │                     │            (TensorFlow.js)     │
 │        │                     └──► public/models/*.json|bin    │
-│        │                          (BlazeFace · FaceMesh · RVM)│
+│        │                          (BlazeFace · FaceMesh · Selfie)│
 │        │                                                       │
 │        ├──────────────► lib/mask.ts    (alpha maths)           │
 │        ├──────────────► lib/outline.ts (stroke generation)     │
@@ -39,7 +39,7 @@ Nothing in this diagram talks to a third-party service.
 
 ```
 source canvas ──┐
-                 ├─► RVM ──► person alpha (source resolution)
+                 ├─► Selfie Segmentation ──► person alpha
 face mesh ───────┘                  │
                                     ▼
                             ┌───────────────────────┐
@@ -133,7 +133,7 @@ Large binary data is stored as `Blob`s, never base64 strings.
 | --- | --- |
 | WebGL unavailable | Falls back to the WASM backend; the backend name is shown in the UI |
 | Both backends unavailable | The colour matte is used and the result is labelled `Colour fallback matte` |
-| RVM returns nothing | The colour matte is used and a warning toast explains why |
+| The matte comes back empty (max < 8) | The colour matte is used and a warning toast explains why |
 | No face detected | Head modes are disabled, the app says so, and the person silhouette is kept for the background mode |
 | Empty mask after intersection | The original image is returned with an explicit warning |
 | Batch item fails | The item is marked `failed` with its real error; the batch continues |
@@ -149,4 +149,5 @@ Large binary data is stored as `Blob`s, never base64 strings.
 - Account system, hosted community, publications and follows.
 - Cloud sync with conflict resolution.
 - Additional local models (SAM-style segmentation for non-person subjects, pose estimation for body crops).
+- UI localisation is implemented (English + 简体中文); adding a language means adding one dictionary file.
 - Web Worker / OffscreenCanvas pipeline so large batches do not block the UI thread.

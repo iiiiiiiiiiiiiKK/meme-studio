@@ -17,12 +17,13 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import { useUi } from '../state/ui';
+import { formatDateTime, timeAgo, useI18n } from '../i18n';
 import { useLibrary, type LibraryFilter, type LibrarySort } from '../state/library';
 import { useAssetUrl } from '../components/useAssetUrl';
 import { EmptyState, Modal, Spinner, StatusPill } from '../components/ui';
 import { formatBytes, timestampSlug } from '../lib/image';
 import { cx } from '../lib/cx';
-import { openProject, timeAgo } from './home';
+import { openProject } from './home';
 import { downloadBlob as saveBlob } from '../lib/image';
 import type { StoredAsset } from '../lib/db';
 
@@ -38,6 +39,7 @@ const FILTERS: { id: LibraryFilter; label: string }[] = [
 ];
 
 export function LibraryPage() {
+  const { t } = useI18n();
   const library = useLibrary();
   const { toast, navigate } = useUi();
   const [query, setQuery] = useState('');
@@ -77,18 +79,19 @@ export function LibraryPage() {
     <div className="mx-auto w-full max-w-[1180px] px-3 pb-24 pt-4 sm:px-6 sm:pb-10 sm:pt-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">My Space</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t('My Space')}</h1>
           <p className="mt-1 max-w-xl text-[12px] text-[var(--text-dim)]">
-            Everything here is stored in IndexedDB on this device. Nothing is synced unless you export it.
+            {t('Everything here is stored in IndexedDB on this device. Nothing is synced unless you export it.')}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
           <StatusPill tone="neutral">
-            {formatBytes(library.usage.usage)} used
-            {library.usage.quota ? ` of ${formatBytes(library.usage.quota)}` : ''}
+            {library.usage.quota
+              ? t('{size} used of {total}', { size: formatBytes(library.usage.usage), total: formatBytes(library.usage.quota) })
+              : t('{size} used', { size: formatBytes(library.usage.usage) })}
           </StatusPill>
           <button type="button" className="btn text-[11px]" onClick={() => navigate('create')}>
-            <Plus size={12} /> New asset
+            <Plus size={12} /> {t('New asset')}
           </button>
         </div>
       </div>
@@ -98,10 +101,10 @@ export function LibraryPage() {
           <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)]" />
           <input
             className="field pl-8"
-            placeholder="Search assets and projects…"
+            placeholder={t('Search assets and projects…')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search library"
+            aria-label={t('Search library')}
             data-testid="library-search"
           />
         </div>
@@ -113,7 +116,7 @@ export function LibraryPage() {
               className={cx('chip shrink-0', library.filter === filter.id && 'chip-active')}
               onClick={() => library.setFilter(filter.id)}
             >
-              {filter.label}
+              {t(filter.label)}
             </button>
           ))}
         </div>
@@ -123,19 +126,19 @@ export function LibraryPage() {
             className="field h-8 py-0 text-[11px]"
             value={sort}
             onChange={(e) => setSort(e.target.value as LibrarySort)}
-            aria-label="Sort assets"
+            aria-label={t('Sort assets')}
           >
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="name">Name</option>
-            <option value="size">Size</option>
+            <option value="newest">{t('Newest')}</option>
+            <option value="oldest">{t('Oldest')}</option>
+            <option value="name">{t('Name')}</option>
+            <option value="size">{t('Size')}</option>
           </select>
         </div>
       </div>
 
       {library.selection.length ? (
         <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] px-3 py-2 text-[11px]">
-          <span>{library.selection.length} selected</span>
+          <span>{t('{count} selected', { count: library.selection.length })}</span>
           <div className="ml-auto flex flex-wrap gap-1.5">
             <button
               type="button"
@@ -145,10 +148,10 @@ export function LibraryPage() {
                   const asset = library.assets.find((a) => a.id === id);
                   if (asset) saveBlob(asset.blob, asset.name.endsWith('.png') ? asset.name : `${asset.name}.png`);
                 }
-                toast('Download started.', 'success');
+                toast(t('Download started.'), 'success');
               }}
             >
-              <Download size={11} /> Download
+              <Download size={11} /> {t('Download')}
             </button>
             <button
               type="button"
@@ -156,10 +159,10 @@ export function LibraryPage() {
               onClick={async () => {
                 for (const id of library.selection) await library.remove(id);
                 library.clearSelection();
-                toast('Moved to trash.', 'info');
+                toast(t('Moved to trash.'), 'info');
               }}
             >
-              <Trash2 size={11} /> Trash
+              <Trash2 size={11} /> {t('Trash')}
             </button>
             <button
               type="button"
@@ -167,13 +170,13 @@ export function LibraryPage() {
               onClick={async () => {
                 for (const id of library.selection) await library.purge(id);
                 library.clearSelection();
-                toast('Deleted permanently.', 'info');
+                toast(t('Deleted permanently.'), 'info');
               }}
             >
-              <X size={11} /> Delete forever
+              <X size={11} /> {t('Delete forever')}
             </button>
             <button type="button" className="btn-ghost h-7 text-[10px]" onClick={library.clearSelection}>
-              Clear
+              {t('Clear')}
             </button>
           </div>
         </div>
@@ -181,35 +184,35 @@ export function LibraryPage() {
 
       {library.loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-[12px] text-[var(--text-faint)]">
-          <Spinner size={14} /> Reading local storage…
+          <Spinner size={14} /> {t('Reading local storage…')}
         </div>
       ) : (
         <>
           <section className="mt-4">
             <div className="mb-2 flex items-center justify-between">
               <h2 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-dim)]">
-                Assets · {list.length}
+                {t('Assets · {count}', { count: list.length })}
               </h2>
               {library.filter === 'trash' ? (
-                <span className="text-[10px] text-[var(--text-faint)]">Items in trash stay on disk until purged</span>
+                <span className="text-[10px] text-[var(--text-faint)]">{t('Items in trash stay on disk until purged')}</span>
               ) : null}
             </div>
             {list.length === 0 ? (
               <EmptyState
                 icon={<ImageIcon size={22} />}
-                title={library.filter === 'trash' ? 'Trash is empty' : 'No assets here yet'}
+                title={library.filter === 'trash' ? t('Trash is empty') : t('No assets here yet')}
                 body={
                   library.filter === 'trash'
-                    ? 'Deleted assets are kept here until you purge them.'
-                    : 'Cut a sticker in Create, import the starter pack from Discover, or batch-process a folder.'
+                    ? t('Deleted assets are kept here until you purge them.')
+                    : t('Cut a sticker in Create, import the starter pack from Discover, or batch-process a folder.')
                 }
                 action={
                   <div className="flex gap-2">
                     <button type="button" className="btn-primary text-[12px]" onClick={() => navigate('create')}>
-                      <Sparkles size={13} /> Create
+                      <Sparkles size={13} /> {t('Create')}
                     </button>
                     <button type="button" className="btn text-[12px]" onClick={() => navigate('discover')}>
-                      Browse starter pack
+                      {t('Browse starter pack')}
                     </button>
                   </div>
                 }
@@ -233,15 +236,15 @@ export function LibraryPage() {
             <section className="mt-6">
               <div className="mb-2 flex items-center justify-between">
                 <h2 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-dim)]">
-                  Projects · {projects.length}
+                  {t('Projects · {count}', { count: projects.length })}
                 </h2>
                 <button type="button" className="btn-ghost text-[10px]" onClick={() => navigate('create')}>
-                  <Layers size={11} /> New project
+                  <Layers size={11} /> {t('New project')}
                 </button>
               </div>
               {projects.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-[var(--line)] px-3 py-6 text-center text-[11px] text-[var(--text-faint)]">
-                  No projects match that search.
+                  {t('No projects match that search.')}
                 </p>
               ) : (
                 <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -250,10 +253,10 @@ export function LibraryPage() {
                       key={project.id}
                       project={project}
                       onDelete={async () => {
-                        const ok = window.confirm(`Delete the project “${project.name}”? This cannot be undone.`);
+                        const ok = window.confirm(t('Delete the project “{name}”? This cannot be undone.', { name: project.name }));
                         if (!ok) return;
                         await library.removeProject(project.id);
-                        toast('Project deleted.', 'info');
+                        toast(t('Project deleted.'), 'info');
                       }}
                     />
                   ))}
@@ -297,6 +300,7 @@ function AssetCard({
   onToggle: () => void;
   onOpen: () => void;
 }) {
+  const { t } = useI18n();
   const url = useAssetUrl(asset);
   return (
     <div
@@ -305,16 +309,16 @@ function AssetCard({
         selected ? 'border-[var(--accent)]' : 'border-[var(--line)]',
       )}
     >
-      <button type="button" className="checker-sm relative flex aspect-square w-full items-center justify-center" onClick={onOpen} aria-label={`Open ${asset.name}`}>
+      <button type="button" className="checker-sm relative flex aspect-square w-full items-center justify-center" onClick={onOpen} aria-label={t('Open {name}', { name: asset.name })}>
         {url ? <img src={url} alt={asset.name} className="h-full w-full object-contain p-1" loading="lazy" /> : null}
         {asset.deleted ? (
-          <span className="absolute inset-0 grid place-items-center bg-black/50 text-[10px] text-white">In trash</span>
+          <span className="absolute inset-0 grid place-items-center bg-black/50 text-[10px] text-white">{t('In trash')}</span>
         ) : null}
       </button>
       <button
         type="button"
         onClick={onToggle}
-        aria-label={selected ? `Deselect ${asset.name}` : `Select ${asset.name}`}
+        aria-label={selected ? t('Deselect {name}', { name: asset.name }) : t('Select {name}', { name: asset.name })}
         className="absolute left-1.5 top-1.5 grid h-5 w-5 place-items-center rounded border"
         style={{
           borderColor: selected ? 'var(--accent)' : 'rgba(255,255,255,0.35)',
@@ -348,6 +352,7 @@ function ProjectTile({
   project: { id: string; name: string; thumb: Blob | null; updatedAt: number; width: number; height: number; layers: unknown[] };
   onDelete: () => void;
 }) {
+  const { t, locale } = useI18n();
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!project.thumb) return;
@@ -364,10 +369,10 @@ function ProjectTile({
         <button type="button" className="min-w-0 flex-1 text-left" onClick={() => void openProject(project.id)}>
           <p className="truncate text-[11px] font-medium">{project.name}</p>
           <p className="text-[9px] text-[var(--text-faint)]">
-            {project.width}×{project.height} · {project.layers.length} layers · {timeAgo(project.updatedAt)}
+            {project.width}×{project.height} · {t('{count} layers', { count: project.layers.length })} · {timeAgo(locale, project.updatedAt)}
           </p>
         </button>
-        <button type="button" className="icon-btn h-6 w-6 text-[var(--danger)] opacity-0 group-hover:opacity-100" onClick={onDelete} aria-label={`Delete ${project.name}`}>
+        <button type="button" className="icon-btn h-6 w-6 text-[var(--danger)] opacity-0 group-hover:opacity-100" onClick={onDelete} aria-label={t('Delete {name}', { name: project.name })}>
           <Trash2 size={11} />
         </button>
       </div>
@@ -386,6 +391,7 @@ function AssetDetail({
   onDeleted: () => void;
   onOpenEditor: (asset: StoredAsset) => Promise<void>;
 }) {
+  const { t, locale } = useI18n();
   const library = useLibrary();
   const { toast } = useUi();
   // Always render the live record from the store so edits (tags, favourite,
@@ -418,11 +424,11 @@ function AssetDetail({
               className="btn-danger text-[12px]"
               onClick={async () => {
                 await library.purge(asset.id);
-                toast('Asset deleted permanently.', 'info');
+                toast(t('Asset deleted permanently.'), 'info');
                 onDeleted();
               }}
             >
-              <Trash2 size={12} /> Delete
+              <Trash2 size={12} /> {t('Delete')}
             </button>
             <span className="flex-1" />
             {asset.deleted ? (
@@ -431,11 +437,11 @@ function AssetDetail({
                 className="btn text-[12px]"
                 onClick={async () => {
                   await library.restore(asset.id);
-                  toast('Restored from trash.', 'success');
+                  toast(t('Restored from trash.'), 'success');
                   onDeleted();
                 }}
               >
-                <Undo2 size={12} /> Restore
+                <Undo2 size={12} /> {t('Restore')}
               </button>
             ) : (
               <button
@@ -443,11 +449,11 @@ function AssetDetail({
                 className="btn text-[12px]"
                 onClick={async () => {
                   await library.remove(asset.id);
-                  toast('Moved to trash.', 'info');
+                  toast(t('Moved to trash.'), 'info');
                   onDeleted();
                 }}
               >
-                <Trash2 size={12} /> Move to trash
+                <Trash2 size={12} /> {t('Move to trash')}
               </button>
             )}
             <button
@@ -455,10 +461,10 @@ function AssetDetail({
               className="btn-primary text-[12px]"
               onClick={() => {
                 saveBlob(asset.blob, `${asset.name.replace(/[^\w.-]+/g, '-')}-${timestampSlug()}.png`);
-                toast('Downloaded.', 'success');
+                toast(t('Downloaded.'), 'success');
               }}
             >
-              <Download size={12} /> Download
+              <Download size={12} /> {t('Download')}
             </button>
           </>
         }
@@ -469,14 +475,14 @@ function AssetDetail({
           </div>
           <div className="space-y-2 text-[11px]">
             <div className="grid grid-cols-2 gap-1.5">
-              <Info label="Kind" value={asset.kind} />
-              <Info label="Dimensions" value={`${asset.width} × ${asset.height}`} />
-              <Info label="File size" value={formatBytes(asset.size)} />
-              <Info label="Alpha" value={asset.hasAlpha ? 'Yes' : 'No'} />
-              <Info label="Source" value={asset.source} />
-              <Info label="Created" value={new Date(asset.createdAt).toLocaleString()} />
-              {asset.mode ? <Info label="Cut mode" value={asset.mode} /> : null}
-              <Info label="Favorite" value={asset.favorite ? 'Yes' : 'No'} />
+              <Info label={t('Kind')} value={asset.kind} />
+              <Info label={t('Dimensions')} value={`${asset.width} × ${asset.height}`} />
+              <Info label={t('File size')} value={formatBytes(asset.size)} />
+              <Info label={t('Alpha')} value={asset.hasAlpha ? t('Yes') : t('No')} />
+              <Info label={t('Source')} value={asset.source} />
+              <Info label={t('Created')} value={formatDateTime(locale, asset.createdAt)} />
+              {asset.mode ? <Info label={t('Cut mode')} value={asset.mode} /> : null}
+              <Info label={t('Favorite')} value={asset.favorite ? t('Yes') : t('No')} />
             </div>
 
             <div className="flex flex-wrap gap-1.5 pt-1">
@@ -485,50 +491,50 @@ function AssetDetail({
                 className={cx('btn h-7 text-[10px]', asset.favorite && 'text-[var(--danger)]')}
                 onClick={() => void library.toggleFavorite(asset.id)}
               >
-                <Heart size={11} fill={asset.favorite ? 'currentColor' : 'none'} /> {asset.favorite ? 'Favorited' : 'Favorite'}
+                <Heart size={11} fill={asset.favorite ? 'currentColor' : 'none'} /> {asset.favorite ? t('Favorited') : t('Favorite')}
               </button>
               <button type="button" className="btn h-7 text-[10px]" onClick={() => setRenameOpen(true)}>
-                <Pencil size={11} /> Rename
+                <Pencil size={11} /> {t('Rename')}
               </button>
               <button
                 type="button"
                 className="btn h-7 text-[10px]"
                 onClick={async () => {
                   await onOpenEditor(asset);
-                  toast('Opened in the editor.', 'success');
+                  toast(t('Opened in the editor.'), 'success');
                 }}
               >
-                <Layers size={11} /> Open in editor
+                <Layers size={11} /> {t('Open in editor')}
               </button>
               <button
                 type="button"
                 className="btn h-7 text-[10px]"
                 onClick={() => {
                   saveBlob(asset.blob, `${asset.name.replace(/[^\w.-]+/g, '-')}.png`);
-                  toast('Copy saved as a second download — use the share sheet to copy to the clipboard.', 'info');
+                  toast(t('Copy saved as a second download — use the share sheet to copy to the clipboard.'), 'info');
                 }}
               >
-                <Copy size={11} /> Export copy
+                <Copy size={11} /> {t('Export copy')}
               </button>
             </div>
 
             <div className="border-t border-[var(--line)] pt-2">
-              <p className="label">Tags</p>
+              <p className="label">{t('Tags')}</p>
               <div className="flex flex-wrap gap-1">
                 {asset.tags.map((tag) => (
                   <span key={tag} className="chip">
                     #{tag}
                     <button
                       type="button"
-                      onClick={() => void library.setTags(asset.id, asset.tags.filter((t) => t !== tag))}
-                      aria-label={`Remove tag ${tag}`}
+                      onClick={() => void library.setTags(asset.id, asset.tags.filter((value) => value !== tag))}
+                      aria-label={t('Remove tag {tag}', { tag })}
                       className="text-[var(--text-faint)] hover:text-[var(--danger)]"
                     >
                       <X size={9} />
                     </button>
                   </span>
                 ))}
-                {asset.tags.length === 0 ? <span className="text-[10px] text-[var(--text-faint)]">No tags yet.</span> : null}
+                {asset.tags.length === 0 ? <span className="text-[10px] text-[var(--text-faint)]">{t('No tags yet.')}</span> : null}
               </div>
               <form
                 className="mt-1.5 flex gap-1"
@@ -537,7 +543,7 @@ function AssetDetail({
                   const tag = tagDraft.trim().toLowerCase();
                   if (!tag) return;
                   if (asset.tags.includes(tag)) {
-                    toast('That tag already exists.', 'info');
+                    toast(t('That tag already exists.'), 'info');
                     return;
                   }
                   void library.setTags(asset.id, [...asset.tags, tag]);
@@ -546,13 +552,13 @@ function AssetDetail({
               >
                 <input
                   className="field h-7 flex-1 px-2 text-[11px]"
-                  placeholder="Add a tag…"
+                  placeholder={t('Add a tag…')}
                   value={tagDraft}
                   onChange={(e) => setTagDraft(e.target.value)}
-                  aria-label="New tag"
+                  aria-label={t('New tag')}
                 />
                 <button type="submit" className="btn h-7 px-2 text-[10px]">
-                  <Tag size={11} /> Add
+                  <Tag size={11} /> {t('Add')}
                 </button>
               </form>
             </div>
@@ -563,11 +569,11 @@ function AssetDetail({
       <Modal
         open={renameOpen}
         onClose={() => setRenameOpen(false)}
-        title="Rename asset"
+        title={t('Rename asset')}
         footer={
           <>
             <button type="button" className="btn text-[12px]" onClick={() => setRenameOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button
               type="button"
@@ -577,15 +583,15 @@ function AssetDetail({
                 if (!name) return;
                 await library.rename(asset.id, name);
                 setRenameOpen(false);
-                toast('Renamed.', 'success');
+                toast(t('Renamed.'), 'success');
               }}
             >
-              Save
+              {t('Save')}
             </button>
           </>
         }
       >
-        <label className="label">Asset name</label>
+        <label className="label">{t('Asset name')}</label>
         <input className="field" value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus />
       </Modal>
     </>

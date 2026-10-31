@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { useUi } from '../state/ui';
+import { useI18n } from '../i18n';
 import { useLibrary } from '../state/library';
 import { useEditor, createImageLayer } from '../state/editor';
 import { CUT_MODES, DEFAULT_OUTLINE, MODE_LABEL, type CutMode, type OutlineSettings } from '../types';
@@ -47,10 +48,17 @@ interface AnalyzeState {
   progress: number;
   faces: FaceDetection[];
   personAlpha: Uint8ClampedArray | null;
-  matteSource: 'rvm' | 'fallback' | null;
+  matteSource: 'selfie' | 'rvm' | 'fallback' | null;
   elapsed: number;
   error?: string;
   warnings: string[];
+}
+
+function matteLabel(t: (key: string) => string, source: 'selfie' | 'rvm' | 'fallback' | null): string {
+  if (source === 'selfie') return t('Neural person matte');
+  if (source === 'rvm') return t('RVM matte');
+  if (source === 'fallback') return t('Colour fallback matte');
+  return t('No matte yet');
 }
 
 const EMPTY_ANALYZE: AnalyzeState = {
@@ -65,6 +73,7 @@ const EMPTY_ANALYZE: AnalyzeState = {
 };
 
 export function CreatePage() {
+  const { t } = useI18n();
   const { navigate, toast, setEngine } = useUi();
   const [source, setSource] = useState<HTMLCanvasElement | null>(null);
   const [sourceName, setSourceName] = useState('image');
@@ -111,7 +120,7 @@ export function CreatePage() {
         next.warnings.forEach((warning) => toast(warning, 'info'));
       }
     } catch (error) {
-      toast('Cutout failed', 'error', error instanceof Error ? error.message : String(error));
+      toast(t('Cutout failed'), 'error', error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
@@ -171,7 +180,7 @@ export function CreatePage() {
   async function loadFile(file: File | null): Promise<void> {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      toast('That file is not an image.', 'error');
+      toast(t('That file is not an image.'), 'error');
       return;
     }
     try {
@@ -182,9 +191,9 @@ export function CreatePage() {
       setManualAlpha(null);
       setResult(null);
       setTab('source');
-      toast(`Loaded ${file.name} · ${canvas.width}×${canvas.height}`, 'success');
+      toast(t('Loaded {name} · {w}×{h}', { name: file.name, w: canvas.width, h: canvas.height }), 'success');
     } catch (error) {
-      toast('Could not read that image', 'error', error instanceof Error ? error.message : String(error));
+      toast(t('Could not read that image'), 'error', error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -192,7 +201,7 @@ export function CreatePage() {
     if (!urlValue.trim()) return;
     setUrlBusy(true);
     try {
-      if (!/^https?:\/\//i.test(urlValue.trim())) throw new Error('Only http(s) URLs are supported.');
+      if (!/^https?:\/\//i.test(urlValue.trim())) throw new Error(t('Only http(s) URLs are supported.'));
       const img = await urlToImage(urlValue.trim(), true);
       const canvas = createCanvas(img.naturalWidth, img.naturalHeight);
       ctx2d(canvas).drawImage(img, 0, 0);
@@ -203,13 +212,13 @@ export function CreatePage() {
       setResult(null);
       setTab('source');
       setUrlOpen(false);
-      toast('Remote image loaded locally. Nothing was uploaded.', 'success');
+      toast(t('Remote image loaded locally. Nothing was uploaded.'), 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       toast(
-        'Could not load that URL',
+        t('Could not load that URL'),
         'error',
-        `${message} — most sites block cross-origin reads. Download the image and drop it here instead.`,
+        `${message} — ${t('most sites block cross-origin reads. Download the image and drop it here instead.')}`,
       );
     } finally {
       setUrlBusy(false);
@@ -228,42 +237,48 @@ export function CreatePage() {
           return;
         }
       }
-      toast('No image found on the clipboard. Copy an image first.', 'info');
+      toast(t('No image found on the clipboard. Copy an image first.'), 'info');
     } catch (error) {
       toast(
-        'Clipboard access was blocked',
+        t('Clipboard access was blocked'),
         'error',
-        `${error instanceof Error ? error.message : String(error)} — use the file picker or drag & drop instead.`,
+        `${error instanceof Error ? error.message : String(error)} — ${t('use the file picker or drag & drop instead.')}`,
       );
     }
   }
 
   async function runAnalysis(): Promise<void> {
     if (!source) return;
-    setAnalyze({ ...EMPTY_ANALYZE, status: 'running', message: 'Starting local engine…', progress: 0.05 });
-    setEngine('loading', 'Loading local models…');
+    setAnalyze({ ...EMPTY_ANALYZE, status: 'running', message: t('Starting local engine…'), progress: 0.05 });
+    setEngine('loading', t('Loading local models…'));
     try {
       const onProgress = (event: ProgressEvent) => {
         setAnalyze((prev) => ({ ...prev, message: event.message, progress: event.stage === 'ready' ? 0.45 : prev.progress + 0.1 }));
       };
       await getEngine(onProgress);
-      onProgress({ stage: 'detecting', message: 'Detecting faces…' });
+      onProgress({ stage: 'detecting', message: t('Detecting faces…') });
       const detect = await detectAll(source, onProgress);
-      onProgress({ stage: 'matting', message: 'Building the person matte…' });
+      onProgress({ stage: 'matting', message: t('Building the person matte…') });
       const matte = await personAlpha(source, onProgress);
-      setEngine('ready', `Ready · ${engineInfo?.backend ?? detect.backend}`);
+      setEngine('ready', t('Ready · {backend}', { backend: engineInfo?.backend ?? detect.backend }));
       const warnings: string[] = [];
       if (matte.source === 'fallback') {
         warnings.push(
-          `The neural matte did not run (${matte.note ?? 'unknown reason'}). A colour-based fallback was used instead — results are approximate.`,
+          t('The neural matte did not run ({reason}). A colour-based fallback was used instead — results are approximate.', {
+            reason: matte.note ?? t('unknown reason'),
+          }),
         );
       }
       if (detect.faces.length === 0) {
-        warnings.push('No face was detected in this image. Background and Full person modes will still work.');
+        warnings.push(t('No face was detected in this image. Background and Full person modes will still work.'));
       }
       setAnalyze({
         status: 'done',
-        message: `${detect.faces.length} face${detect.faces.length === 1 ? '' : 's'} · ${matte.source === 'rvm' ? 'RVM matte' : 'fallback matte'} · ${detect.elapsedMs + matte.elapsedMs}ms`,
+        message: t('{count} faces · {matte} · {ms}ms', {
+          count: detect.faces.length,
+          matte: matteLabel(t, matte.source),
+          ms: detect.elapsedMs + matte.elapsedMs,
+        }),
         progress: 1,
         faces: detect.faces,
         personAlpha: matte.alpha,
@@ -280,7 +295,7 @@ export function CreatePage() {
       const message = error instanceof Error ? error.message : String(error);
       setAnalyze({ ...EMPTY_ANALYZE, status: 'error', message, error: message });
       setEngine('error', message);
-      toast('Local engine failed', 'error', message);
+      toast(t('Local engine failed'), 'error', message);
     }
   }
 
@@ -290,7 +305,7 @@ export function CreatePage() {
     setExpand(0);
     setEdgeSmooth(0.4);
     setOutline(DEFAULT_OUTLINE);
-    toast('Adjustments reset.', 'info');
+    toast(t('Adjustments reset.'), 'info');
   }
 
   // brush painting on the mask
@@ -369,9 +384,9 @@ export function CreatePage() {
       });
       await editor.save();
       navigate('editor');
-      toast('Sticker sent to the editor and saved to My Space.', 'success');
+      toast(t('Sticker sent to the editor and saved to My Space.'), 'success');
     } catch (error) {
-      toast('Could not open the editor', 'error', error instanceof Error ? error.message : String(error));
+      toast(t('Could not open the editor'), 'error', error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -390,9 +405,9 @@ export function CreatePage() {
         mode,
         hasAlpha: true,
       });
-      toast('Saved to My Space on this device.', 'success');
+      toast(t('Saved to My Space on this device.'), 'success');
     } catch (error) {
-      toast('Saving failed', 'error', error instanceof Error ? error.message : String(error));
+      toast(t('Saving failed'), 'error', error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -400,7 +415,7 @@ export function CreatePage() {
     if (!result) return;
     const blob = await canvasToBlob(result.canvas, 'image/png');
     downloadBlob(blob, `${sourceName.replace(/\.[^.]+$/, '')}-${mode}.png`);
-    toast(`Downloaded transparent PNG · ${formatBytes(blob.size)}`, 'success');
+    toast(t('Downloaded transparent PNG · {size}', { size: formatBytes(blob.size) }), 'success');
   }
 
   // paste support
@@ -421,29 +436,28 @@ export function CreatePage() {
     () =>
       analyze.faces.map((face, index) => ({
         index,
-        label: `Person ${index + 1}`,
+        label: t('Person {n}', { n: index + 1 }),
         detail: `${Math.round(face.box[2])}×${Math.round(face.box[3])}px · ${(face.score * 100).toFixed(0)}%`,
       })),
-    [analyze.faces],
+    [analyze.faces, t],
   );
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-3 pb-24 pt-4 sm:px-6 sm:pb-10 sm:pt-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Create</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t('Create')}</h1>
           <p className="mt-1 text-[12px] text-[var(--text-dim)]">
-            Local cutout studio — FaceMesh finds the person, the RVM matte shapes the silhouette, and the outline is
-            derived from the real alpha channel.
+            {t('Local cutout studio — FaceMesh finds the person, the neural matte shapes the silhouette, and the outline is derived from the real alpha channel.')}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
           {analyze.matteSource ? (
-            <StatusPill tone={analyze.matteSource === 'rvm' ? 'ok' : 'warn'}>
-              {analyze.matteSource === 'rvm' ? 'RVM neural matte' : 'Colour fallback matte'}
+            <StatusPill tone={analyze.matteSource === 'fallback' ? 'warn' : 'ok'}>
+              {matteLabel(t, analyze.matteSource)}
             </StatusPill>
           ) : (
-            <StatusPill tone="neutral">Engine idle</StatusPill>
+            <StatusPill tone="neutral">{t('Engine idle')}</StatusPill>
           )}
           {engineInfo ? <StatusPill tone="ok">{engineInfo.backend}</StatusPill> : null}
         </div>
@@ -474,24 +488,23 @@ export function CreatePage() {
               <span className="grid h-12 w-12 place-items-center rounded-xl bg-[var(--panel-2)] text-[var(--accent)]">
                 <ImagePlus size={22} />
               </span>
-              <h2 className="mt-3 text-sm font-medium">Drop an image, paste, or choose a file</h2>
+              <h2 className="mt-3 text-sm font-medium">{t('Drop an image, paste, or choose a file')}</h2>
               <p className="mt-1 max-w-sm text-[11px] leading-relaxed text-[var(--text-faint)]">
-                JPG, PNG, WebP or GIF. Everything is decoded in this tab — no upload, no API key, and it keeps working
-                when you go offline.
+                {t('JPG, PNG, WebP or GIF. Everything is decoded in this tab — no upload, no API key, and it keeps working when you go offline.')}
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <button type="button" className="btn-primary text-[12px]" onClick={() => fileRef.current?.click()}>
-                  <Upload size={14} /> Choose file
+                  <Upload size={14} /> {t('Choose file')}
                 </button>
                 <button type="button" className="btn text-[12px]" onClick={() => void pasteFromClipboard()}>
-                  <ClipboardPaste size={14} /> Paste
+                  <ClipboardPaste size={14} /> {t('Paste')}
                 </button>
                 <button type="button" className="btn text-[12px]" onClick={() => setUrlOpen(true)}>
-                  <Link2 size={14} /> From URL
+                  <Link2 size={14} /> {t('From URL')}
                 </button>
               </div>
               <p className="mt-3 text-[10px] text-[var(--text-faint)]">
-                Tip: Ctrl/⌘+V anywhere on this page also works.
+                {t('Tip: Ctrl/⌘+V anywhere on this page also works.')}
               </p>
             </div>
           ) : (
@@ -508,9 +521,9 @@ export function CreatePage() {
                       value={tab}
                       onChange={(value) => setTab(value as PreviewTab)}
                       options={[
-                        { value: 'result', label: 'Result' },
-                        { value: 'source', label: 'Original' },
-                        { value: 'mask', label: 'Mask' },
+                        { value: 'result', label: t('Result') },
+                        { value: 'source', label: t('Original') },
+                        { value: 'mask', label: t('Mask') },
                       ]}
                     />
                     <button
@@ -522,7 +535,7 @@ export function CreatePage() {
                         setAnalyze(EMPTY_ANALYZE);
                         setManualAlpha(null);
                       }}
-                      aria-label="Remove image"
+                      aria-label={t('Remove image')}
                     >
                       <X size={15} />
                     </button>
@@ -530,13 +543,13 @@ export function CreatePage() {
                 </div>
                 <div className="relative flex min-h-[280px] items-center justify-center p-3 sm:min-h-[400px]">
                   {tab !== 'mask' ? (
-                    <canvas ref={previewRef} className="max-h-[58vh] w-auto max-w-full" aria-label="Cutout preview" />
+                    <canvas ref={previewRef} className="max-h-[58vh] w-auto max-w-full" aria-label={t('Cutout preview')} />
                   ) : (
                     <div className="relative max-h-[58vh]">
                       <canvas
                         ref={maskRef}
                         className="max-h-[58vh] w-auto max-w-full cursor-crosshair touch-none rounded border border-[var(--line)]"
-                        aria-label="Mask editor"
+                        aria-label={t('Mask editor')}
                         onPointerDown={(e) => {
                           painting.current = true;
                           (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -553,7 +566,7 @@ export function CreatePage() {
                         }}
                       />
                       <span className="pointer-events-none absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-[10px] text-white">
-                        {brushMode === 'erase' ? 'Erase' : 'Restore'} · {brushSize}px
+                        {brushMode === 'erase' ? t('Erase') : t('Restore')} · {brushSize}px
                       </span>
                     </div>
                   )}
@@ -561,7 +574,7 @@ export function CreatePage() {
                   {busy ? (
                     <div className="absolute inset-0 grid place-items-center bg-black/30">
                       <span className="flex items-center gap-2 rounded-lg bg-[var(--panel)] px-3 py-2 text-[11px] shadow-lg">
-                        <Spinner size={13} /> Recomputing cutout…
+                        <Spinner size={13} /> {t('Recomputing cutout…')}
                       </span>
                     </div>
                   ) : null}
@@ -569,7 +582,7 @@ export function CreatePage() {
                   {!analyze.personAlpha && tab === 'result' ? (
                     <div className="absolute inset-0 grid place-items-center bg-[var(--panel)]/70">
                       <div className="text-center">
-                        <p className="text-[12px] text-[var(--text-dim)]">Analysis has not run yet.</p>
+                        <p className="text-[12px] text-[var(--text-dim)]">{t('Analysis has not run yet.')}</p>
                         <button
                           type="button"
                           className="btn-primary mt-2 text-[12px]"
@@ -577,7 +590,7 @@ export function CreatePage() {
                           disabled={analyze.status === 'running'}
                         >
                           {analyze.status === 'running' ? <Spinner size={13} /> : <Cpu size={13} />}
-                          Run local AI
+                          {t('Run local AI')}
                         </button>
                       </div>
                     </div>
@@ -602,17 +615,17 @@ export function CreatePage() {
               {result ? (
                 <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2">
                   <span className="text-[11px] text-[var(--text-faint)]">
-                    {result.width}×{result.height} · alpha kept
+                    {result.width}×{result.height} · {t('alpha kept')}
                   </span>
                   <div className="ml-auto flex flex-wrap gap-1.5">
                     <button type="button" className="btn h-8 text-[11px]" onClick={() => void downloadResult()}>
                       <Download size={12} /> PNG
                     </button>
                     <button type="button" className="btn h-8 text-[11px]" onClick={() => void saveToLibrary()}>
-                      <Save size={12} /> Save to My Space
+                      <Save size={12} /> {t('Save to My Space')}
                     </button>
                     <button type="button" className="btn-primary h-8 text-[11px]" onClick={() => void sendToEditor()} data-testid="send-to-editor">
-                      <Layers size={12} /> Open in editor <ArrowRight size={12} />
+                      <Layers size={12} /> {t('Open in editor')} <ArrowRight size={12} />
                     </button>
                   </div>
                 </div>
@@ -624,22 +637,22 @@ export function CreatePage() {
         {/* controls */}
         <aside className="space-y-3">
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
-            <p className="section-title mb-2">1 · Import</p>
+            <p className="section-title mb-2">1 · {t('Import')}</p>
             <div className="grid grid-cols-3 gap-1.5">
               <button type="button" className="btn h-9 text-[11px]" onClick={() => fileRef.current?.click()}>
-                <Upload size={13} /> File
+                <Upload size={13} /> {t('File')}
               </button>
               <button type="button" className="btn h-9 text-[11px]" onClick={() => void pasteFromClipboard()}>
-                <ClipboardPaste size={13} /> Paste
+                <ClipboardPaste size={13} /> {t('Paste')}
               </button>
               <button type="button" className="btn h-9 text-[11px]" onClick={() => setUrlOpen(true)}>
-                <Link2 size={13} /> URL
+                <Link2 size={13} /> {t('URL')}
               </button>
             </div>
           </div>
 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
-            <p className="section-title mb-2">2 · Local AI</p>
+            <p className="section-title mb-2">2 · {t('Local AI')}</p>
             <button
               type="button"
               className="btn-primary h-9 w-full text-[12px]"
@@ -648,7 +661,7 @@ export function CreatePage() {
               data-testid="run-analysis"
             >
               {analyze.status === 'running' ? <Spinner size={13} /> : <Wand2 size={13} />}
-              {analyze.personAlpha ? 'Re-run analysis' : 'Analyse image'}
+              {analyze.personAlpha ? t('Re-run analysis') : t('Analyse image')}
             </button>
             {analyze.status === 'done' ? (
               <div className="mt-2 space-y-1 text-[10px] leading-relaxed text-[var(--text-faint)]">
@@ -657,7 +670,7 @@ export function CreatePage() {
                 </p>
                 {analyze.matteSource === 'fallback' ? (
                   <p className="flex items-start gap-1" style={{ color: 'var(--warn)' }}>
-                    <AlertTriangle size={10} className="mt-0.5 shrink-0" /> Neural matte unavailable — the colour fallback is approximate.
+                    <AlertTriangle size={10} className="mt-0.5 shrink-0" /> {t('Neural matte unavailable — the colour fallback is approximate.')}
                   </p>
                 ) : null}
               </div>
@@ -668,12 +681,12 @@ export function CreatePage() {
               </p>
             ) : null}
             <p className="mt-2 text-[10px] leading-relaxed text-[var(--text-faint)]">
-              Models are served from this site (RVM 3.7 MB + FaceMesh 1.5 MB) and cached by the browser after the first run.
+              {t('Models are served from this site (Selfie Segmentation 213 KB + FaceMesh 1.5 MB) and cached by the browser after the first run.')}
             </p>
           </div>
 
           <div className={cx('rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3', !canCut && 'opacity-60')}>
-            <p className="section-title mb-2">3 · Cut mode</p>
+            <p className="section-title mb-2">3 · {t('Cut mode')}</p>
             <div className="grid grid-cols-2 gap-1.5">
               {CUT_MODES.map((item) => {
                 const disabled = !canCut || ((mode !== 'background' && mode !== 'full') && analyze.faces.length === 0);
@@ -690,20 +703,20 @@ export function CreatePage() {
                         : 'border-[var(--line)] hover:bg-[var(--panel-2)]',
                       disabled && 'cursor-not-allowed opacity-40',
                     )}
-                    title={item.hint}
+                    title={t(item.hint)}
                   >
-                    <span className="block font-medium">{item.label}</span>
+                    <span className="block font-medium">{t(item.label)}</span>
                   </button>
                 );
               })}
             </div>
             <p className="mt-1.5 text-[10px] leading-relaxed text-[var(--text-faint)]">
-              {CUT_MODES.find((m) => m.id === mode)?.hint}
+              {t(CUT_MODES.find((m) => m.id === mode)?.hint ?? '')}
             </p>
 
             {faceOptions.length > 1 ? (
               <div className="mt-2">
-                <span className="label">Target person</span>
+                <span className="label">{t('Target person')}</span>
                 <div className="flex flex-wrap gap-1">
                   {faceOptions.map((face) => (
                     <button
@@ -721,30 +734,30 @@ export function CreatePage() {
             ) : null}
             {analyze.faces.length === 0 && analyze.status === 'done' ? (
               <p className="mt-2 text-[10px] leading-relaxed" style={{ color: 'var(--warn)' }}>
-                No face detected — only Background and Full person modes are available for this image.
+                {t('No face detected — only Background and Full person modes are available for this image.')}
               </p>
             ) : null}
           </div>
 
           <div className={cx('rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3', !canCut && 'opacity-60')}>
             <div className="mb-1 flex items-center justify-between">
-              <p className="section-title">4 · Edge & outline</p>
+              <p className="section-title">4 · {t('Edge & outline')}</p>
               <button type="button" className="btn-ghost h-6 px-1.5 text-[10px]" onClick={resetEdits}>
-                <RotateCcw size={10} /> Reset
+                <RotateCcw size={10} /> {t('Reset')}
               </button>
             </div>
-            <Slider label="Feather" value={feather} min={0} max={4} step={0.1} unit="px" onChange={setFeather} />
-            <Slider label="Expand / contract" value={expand} min={-12} max={12} unit="px" onChange={setExpand} />
-            <Slider label="Edge smooth" value={edgeSmooth} min={0} max={3} step={0.1} unit="px" onChange={setEdgeSmooth} />
+            <Slider label={t('Feather')} value={feather} min={0} max={4} step={0.1} unit="px" onChange={setFeather} />
+            <Slider label={t('Expand / contract')} value={expand} min={-12} max={12} unit="px" onChange={setExpand} />
+            <Slider label={t('Edge smooth')} value={edgeSmooth} min={0} max={3} step={0.1} unit="px" onChange={setEdgeSmooth} />
 
             <div className="mt-2 border-t border-[var(--line)] pt-2">
-              <Toggle checked={outline.enabled} onChange={(enabled) => setOutline({ ...outline, enabled })} label="Outline" />
+              <Toggle checked={outline.enabled} onChange={(enabled) => setOutline({ ...outline, enabled })} label={t('Outline')} />
               {outline.enabled ? (
                 <>
-                  <Slider label="Thickness" value={outline.thickness} min={0} max={60} unit="px" onChange={(thickness) => setOutline({ ...outline, thickness })} />
-                  <ColorField label="Color" value={outline.color} onChange={(color) => setOutline({ ...outline, color })} />
+                  <Slider label={t('Thickness')} value={outline.thickness} min={0} max={60} unit="px" onChange={(thickness) => setOutline({ ...outline, thickness })} />
+                  <ColorField label={t('Color')} value={outline.color} onChange={(color) => setOutline({ ...outline, color })} />
                   <Slider
-                    label="Second outline"
+                    label={t('Second outline')}
                     value={outline.layers === 2 ? outline.secondThickness : 0}
                     min={0}
                     max={40}
@@ -752,33 +765,33 @@ export function CreatePage() {
                     onChange={(v) => setOutline({ ...outline, layers: v > 0 ? 2 : 1, secondThickness: v })}
                   />
                   {outline.layers === 2 ? (
-                    <ColorField label="Outer color" value={outline.secondColor} onChange={(secondColor) => setOutline({ ...outline, secondColor })} />
+                    <ColorField label={t('Outer color')} value={outline.secondColor} onChange={(secondColor) => setOutline({ ...outline, secondColor })} />
                   ) : null}
-                  <Slider label="Inner stroke" value={outline.inner} min={0} max={16} unit="px" onChange={(inner) => setOutline({ ...outline, inner })} />
-                  <Toggle checked={outline.shadow} onChange={(shadow) => setOutline({ ...outline, shadow })} label="Drop shadow" />
+                  <Slider label={t('Inner stroke')} value={outline.inner} min={0} max={16} unit="px" onChange={(inner) => setOutline({ ...outline, inner })} />
+                  <Toggle checked={outline.shadow} onChange={(shadow) => setOutline({ ...outline, shadow })} label={t('Drop shadow')} />
                   {outline.shadow ? (
                     <>
-                      <Slider label="Shadow blur" value={outline.shadowBlur} min={0} max={60} unit="px" onChange={(shadowBlur) => setOutline({ ...outline, shadowBlur })} />
+                      <Slider label={t('Shadow blur')} value={outline.shadowBlur} min={0} max={60} unit="px" onChange={(shadowBlur) => setOutline({ ...outline, shadowBlur })} />
                       <Slider
-                        label="Shadow opacity"
+                        label={t('Shadow opacity')}
                         value={Math.round(outline.shadowOpacity * 100)}
                         min={0}
                         max={100}
                         unit="%"
                         onChange={(v) => setOutline({ ...outline, shadowOpacity: v / 100 })}
                       />
-                      <ColorField label="Shadow color" value={outline.shadowColor} onChange={(shadowColor) => setOutline({ ...outline, shadowColor })} />
+                      <ColorField label={t('Shadow color')} value={outline.shadowColor} onChange={(shadowColor) => setOutline({ ...outline, shadowColor })} />
                     </>
                   ) : null}
-                  <Toggle checked={outline.glow} onChange={(glow) => setOutline({ ...outline, glow })} label="Glow" />
-                  {outline.glow ? <ColorField label="Glow color" value={outline.glowColor} onChange={(glowColor) => setOutline({ ...outline, glowColor })} /> : null}
+                  <Toggle checked={outline.glow} onChange={(glow) => setOutline({ ...outline, glow })} label={t('Glow')} />
+                  {outline.glow ? <ColorField label={t('Glow color')} value={outline.glowColor} onChange={(glowColor) => setOutline({ ...outline, glowColor })} /> : null}
                 </>
               ) : null}
             </div>
           </div>
 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
-            <p className="section-title mb-2">5 · Touch up</p>
+            <p className="section-title mb-2">5 · {t('Touch up')}</p>
             <Segmented
               size="sm"
               value={brushMode}
@@ -787,18 +800,17 @@ export function CreatePage() {
                 setTab('mask');
               }}
               options={[
-                { value: 'erase', label: 'Erase' },
-                { value: 'restore', label: 'Restore' },
+                { value: 'erase', label: t('Erase') },
+                { value: 'restore', label: t('Restore') },
               ]}
             />
-            <Slider label="Brush size" value={brushSize} min={4} max={120} unit="px" onChange={setBrushSize} />
+            <Slider label={t('Brush size')} value={brushSize} min={4} max={120} unit="px" onChange={setBrushSize} />
             <p className="text-[10px] leading-relaxed text-[var(--text-faint)]">
-              Switch to the Mask tab and paint to fix hair, ears or a stray shoulder. Undo with Ctrl/⌘+Z inside the
-              canvas history, or press Reset to drop manual edits.
+              {t('Switch to the Mask tab and paint to fix hair, ears or a stray shoulder. Undo with Ctrl/⌘+Z inside the canvas history, or press Reset to drop manual edits.')}
             </p>
             {manualAlpha ? (
               <button type="button" className="btn mt-1.5 h-7 w-full text-[10px]" onClick={() => setManualAlpha(null)}>
-                <RotateCcw size={10} /> Discard brush edits
+                <RotateCcw size={10} /> {t('Discard brush edits')}
               </button>
             ) : null}
           </div>
@@ -817,19 +829,19 @@ export function CreatePage() {
       <Modal
         open={urlOpen}
         onClose={() => setUrlOpen(false)}
-        title="Import from a URL"
+        title={t('Import from a URL')}
         footer={
           <>
             <button type="button" className="btn text-[12px]" onClick={() => setUrlOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" className="btn-primary text-[12px]" onClick={() => void loadFromUrl()} disabled={urlBusy}>
-              {urlBusy ? <Spinner size={13} /> : <Link2 size={13} />} Import
+              {urlBusy ? <Spinner size={13} /> : <Link2 size={13} />} {t('Import')}
             </button>
           </>
         }
       >
-        <label className="label">Image URL</label>
+        <label className="label">{t('Image URL')}</label>
         <input
           className="field"
           placeholder="https://example.com/meme.png"
@@ -838,11 +850,10 @@ export function CreatePage() {
           onKeyDown={(e) => {
             if (e.key === 'Enter') void loadFromUrl();
           }}
-          aria-label="Image URL"
+          aria-label={t('Image URL')}
         />
         <p className="mt-2 text-[11px] leading-relaxed text-[var(--text-faint)]">
-          The image is fetched by your browser and decoded locally. Sites that block cross-origin requests will fail —
-          in that case download the file and drop it on the canvas instead.
+          {t('The image is fetched by your browser and decoded locally. Sites that block cross-origin requests will fail — in that case download the file and drop it on the canvas instead.')}
         </p>
       </Modal>
     </div>

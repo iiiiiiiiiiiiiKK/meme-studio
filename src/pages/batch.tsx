@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { useUi } from '../state/ui';
+import { useI18n } from '../i18n';
 import { useLibrary } from '../state/library';
 import { CUT_MODES, DEFAULT_OUTLINE, type BatchItem, type CutMode, type OutlineSettings } from '../types';
 import { detectAll, personAlpha } from '../lib/ai';
@@ -26,6 +27,7 @@ import { ColorField, Segmented, Slider, Toggle, Spinner, EmptyState, ProgressBar
 type RunState = 'idle' | 'running' | 'paused' | 'cancelled' | 'done';
 
 export function BatchPage() {
+  const { t } = useI18n();
   const { toast } = useUi();
   const [items, setItems] = useState<BatchItem[]>([]);
   const [runState, setRunState] = useState<RunState>('idle');
@@ -51,7 +53,7 @@ export function BatchPage() {
       if (!files) return;
       const list = [...files].filter((file) => file.type.startsWith('image/'));
       if (!list.length) {
-        toast('No images in that selection.', 'info');
+        toast(t('No images in that selection.'), 'info');
         return;
       }
       const next: BatchItem[] = list.map((file) => ({
@@ -61,9 +63,9 @@ export function BatchPage() {
         status: 'queued',
       }));
       setItems((prev) => [...prev, ...next]);
-      toast(`${list.length} image${list.length === 1 ? '' : 's'} queued.`, 'success');
+      toast(t('{count} images queued.', { count: list.length }), 'success');
     },
-    [toast],
+    [t, toast],
   );
 
   const processOne = useCallback(
@@ -154,7 +156,7 @@ export function BatchPage() {
     const queue = items.filter((i) => i.status === 'queued' || i.status === 'failed');
     if (!queue.length) {
       setRunState('idle');
-      toast('Nothing queued. Add images first.', 'info');
+      toast(t('Nothing queued. Add images first.'), 'info');
       return;
     }
     const workers = Math.max(1, Math.min(concurrency, 4));
@@ -174,9 +176,9 @@ export function BatchPage() {
     if (cancelRef.current) setRunState('cancelled');
     else {
       setRunState('done');
-      toast('Batch finished. Check the failed items if any.', 'success');
+      toast(t('Batch finished. Check the failed items if any.'), 'success');
     }
-  }, [concurrency, items, processOne, runState, toast]);
+  }, [concurrency, items, processOne, runState, t, toast]);
 
   function pause() {
     pauseRef.current = true;
@@ -203,7 +205,7 @@ export function BatchPage() {
     const list = items.filter((i) => i.result && i.status === 'done');
     const selection = list;
     if (!selection.length) {
-      toast('Nothing has been processed yet.', 'info');
+      toast(t('Nothing has been processed yet.'), 'info');
       return;
     }
     void selectedOnly;
@@ -215,7 +217,7 @@ export function BatchPage() {
     }
     const blob = await zip.generateAsync({ type: 'blob' });
     downloadBlob(blob, `meme-studio-batch-${timestampSlug()}.zip`);
-    toast(`ZIP exported · ${formatBytes(blob.size)} · ${selection.length} files`, 'success');
+    toast(t('ZIP exported · {size} · {count} files', { size: formatBytes(blob.size), count: selection.length }), 'success');
   }
 
   function renderName(name: string, cutMode: CutMode): string {
@@ -248,18 +250,17 @@ export function BatchPage() {
     <div className="mx-auto w-full max-w-[1180px] px-3 pb-24 pt-4 sm:px-6 sm:pb-10 sm:pt-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Batch Studio</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t('Batch Studio')}</h1>
           <p className="mt-1 max-w-2xl text-[12px] text-[var(--text-dim)]">
-            Queue dozens of photos, apply the same cut mode and outline, then export everything as one ZIP. A single
-            failure never stops the batch.
+            {t('Queue dozens of photos, apply the same cut mode and outline, then export everything as one ZIP. A single failure never stops the batch.')}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="chip">{stats.total} files</span>
-          {stats.working > 0 ? <span className="chip chip-active">{stats.working} working</span> : null}
+          <span className="chip">{t('{count} files', { count: stats.total })}</span>
+          {stats.working > 0 ? <span className="chip chip-active">{t('{count} working', { count: stats.working })}</span> : null}
           {stats.failed > 0 ? (
             <span className="chip" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
-              {stats.failed} failed
+              {t('{count} failed', { count: stats.failed })}
             </span>
           ) : null}
         </div>
@@ -281,19 +282,19 @@ export function BatchPage() {
                   <Upload size={16} />
                 </span>
                 <div>
-                  <p className="text-[12px] font-medium">Drop images here</p>
-                  <p className="text-[10px] text-[var(--text-faint)]">Multi-file and folder import · processed one by one</p>
+                  <p className="text-[12px] font-medium">{t('Drop images here')}</p>
+                  <p className="text-[10px] text-[var(--text-faint)]">{t('Multi-file and folder import · processed one by one')}</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 <button type="button" className="btn h-8 text-[11px]" onClick={() => inputRef.current?.click()}>
-                  <Plus size={12} /> Files
+                  <Plus size={12} /> {t('Files')}
                 </button>
                 <button type="button" className="btn h-8 text-[11px]" onClick={() => folderRef.current?.click()}>
-                  <FolderOpen size={12} /> Folder
+                  <FolderOpen size={12} /> {t('Folder')}
                 </button>
                 <button type="button" className="btn h-8 text-[11px]" onClick={() => { setItems([]); setRunState('idle'); }} disabled={!items.length}>
-                  <Trash2 size={12} /> Clear
+                  <Trash2 size={12} /> {t('Clear')}
                 </button>
               </div>
             </div>
@@ -302,8 +303,8 @@ export function BatchPage() {
           {items.length === 0 ? (
             <EmptyState
               icon={<Layers size={22} />}
-              title="No images queued"
-              body="Add a folder of photos and each one will be cut, outlined and exported with the same settings."
+              title={t('No images queued')}
+              body={t('Add a folder of photos and each one will be cut, outlined and exported with the same settings.')}
             />
           ) : (
             <>
@@ -312,35 +313,35 @@ export function BatchPage() {
                   {runState === 'running' ? (
                     <>
                       <button type="button" className="btn h-8 text-[11px]" onClick={pause}>
-                        <Pause size={12} /> Pause
+                        <Pause size={12} /> {t('Pause')}
                       </button>
                       <button type="button" className="btn-danger h-8 text-[11px]" onClick={cancel}>
-                        <Square size={12} /> Cancel
+                        <Square size={12} /> {t('Cancel')}
                       </button>
                     </>
                   ) : runState === 'paused' ? (
                     <>
                       <button type="button" className="btn-primary h-8 text-[11px]" onClick={resume}>
-                        <Play size={12} /> Resume
+                        <Play size={12} /> {t('Resume')}
                       </button>
                       <button type="button" className="btn-danger h-8 text-[11px]" onClick={cancel}>
-                        <Square size={12} /> Cancel
+                        <Square size={12} /> {t('Cancel')}
                       </button>
                     </>
                   ) : (
                     <button type="button" className="btn-primary h-8 text-[11px]" onClick={() => void runQueue()} disabled={!pending.length && !failed.length}>
-                      <Play size={12} /> Start
+                      <Play size={12} /> {t('Start')}
                     </button>
                   )}
                   {failed.length ? (
                     <button type="button" className="btn h-8 text-[11px]" onClick={retryFailed}>
-                      <RefreshCw size={12} /> Retry failed
+                      <RefreshCw size={12} /> {t('Retry failed')}
                     </button>
                   ) : null}
                 </div>
                 <div className="ml-auto flex gap-1.5">
                   <button type="button" className="btn h-8 text-[11px]" onClick={() => void exportAll(false)} disabled={!done.length}>
-                    <FileArchive size={12} /> Export ZIP
+                    <FileArchive size={12} /> {t('Export ZIP')}
                   </button>
                 </div>
               </div>
@@ -348,7 +349,12 @@ export function BatchPage() {
               <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
                 <ProgressBar
                   value={progress}
-                  label={`${done.length} done · ${stats.working} working · ${stats.queued} queued · ${stats.failed} failed`}
+                  label={t('{done} done · {working} working · {queued} queued · {failed} failed', {
+                    done: done.length,
+                    working: stats.working,
+                    queued: stats.queued,
+                    failed: stats.failed,
+                  })}
                 />
               </div>
 
@@ -360,7 +366,7 @@ export function BatchPage() {
                         <img src={item.previewUrl} alt={item.name} className="h-full w-full object-contain" loading="lazy" />
                       ) : (
                         <span className="text-[10px] text-[var(--text-faint)]">
-                          {item.status === 'working' ? <Spinner size={16} /> : item.status === 'failed' ? <AlertTriangle size={16} style={{ color: 'var(--danger)' }} /> : 'Queued'}
+                          {item.status === 'working' ? <Spinner size={16} /> : item.status === 'failed' ? <AlertTriangle size={16} style={{ color: 'var(--danger)' }} /> : t('Queued')}
                         </span>
                       )}
                       <span className="absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] capitalize text-white">
@@ -383,7 +389,7 @@ export function BatchPage() {
                             className="btn h-7 flex-1 px-1 text-[10px]"
                             onClick={() => downloadBlob(item.result!.blob, `${renderName(item.name, mode)}.${format === 'png' ? 'png' : 'jpg'}`)}
                           >
-                            <Download size={10} /> Save
+                            <Download size={10} /> {t('Save')}
                           </button>
                           <button
                             type="button"
@@ -392,7 +398,7 @@ export function BatchPage() {
                               setItems((prev) => prev.filter((i) => i.id !== item.id));
                               if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
                             }}
-                            aria-label="Remove from queue"
+                            aria-label={t('Remove from queue')}
                           >
                             <X size={11} />
                           </button>
@@ -403,7 +409,7 @@ export function BatchPage() {
                           className="mt-1 flex w-full items-center justify-center gap-1 text-[9px] text-[var(--text-faint)] hover:text-[var(--danger)]"
                           onClick={() => setItems((prev) => prev.filter((i) => i.id !== item.id))}
                         >
-                          <Trash2 size={9} /> Remove
+                          <Trash2 size={9} /> {t('Remove')}
                         </button>
                       )}
                     </div>
@@ -416,56 +422,55 @@ export function BatchPage() {
 
         <aside className="space-y-3">
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
-            <p className="section-title mb-2">Cut mode</p>
+            <p className="section-title mb-2">{t('Cut mode')}</p>
             <select
               className="field text-[12px]"
               value={mode}
               onChange={(e) => setMode(e.target.value as CutMode)}
-              aria-label="Batch cut mode"
+              aria-label={t('Batch cut mode')}
             >
               {CUT_MODES.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.label}
+                  {t(item.label)}
                 </option>
               ))}
             </select>
             <p className="mt-1.5 text-[10px] leading-relaxed text-[var(--text-faint)]">
-              Head modes use the detected face; images without a face fall back to the full person silhouette and the
-              item is marked as processed with a warning.
+              {t('Head modes use the detected face; images without a face fall back to the full person silhouette and the item is marked as processed with a warning.')}
             </p>
           </div>
 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
-            <p className="section-title mb-1">Outline</p>
-            <Toggle checked={outline.enabled} onChange={(enabled) => setOutline({ ...outline, enabled })} label="Apply outline" />
+            <p className="section-title mb-1">{t('Outline')}</p>
+            <Toggle checked={outline.enabled} onChange={(enabled) => setOutline({ ...outline, enabled })} label={t('Apply outline')} />
             {outline.enabled ? (
               <>
-                <Slider label="Thickness" value={outline.thickness} min={0} max={48} unit="px" onChange={(thickness) => setOutline({ ...outline, thickness })} />
-                <ColorField label="Color" value={outline.color} onChange={(color) => setOutline({ ...outline, color })} />
+                <Slider label={t('Thickness')} value={outline.thickness} min={0} max={48} unit="px" onChange={(thickness) => setOutline({ ...outline, thickness })} />
+                <ColorField label={t('Color')} value={outline.color} onChange={(color) => setOutline({ ...outline, color })} />
                 <Slider
-                  label="Second outline"
+                  label={t('Second outline')}
                   value={outline.layers === 2 ? outline.secondThickness : 0}
                   min={0}
                   max={32}
                   unit="px"
                   onChange={(v) => setOutline({ ...outline, layers: v > 0 ? 2 : 1, secondThickness: v })}
                 />
-                {outline.layers === 2 ? <ColorField label="Outer" value={outline.secondColor} onChange={(secondColor) => setOutline({ ...outline, secondColor })} /> : null}
-                <Toggle checked={outline.shadow} onChange={(shadow) => setOutline({ ...outline, shadow })} label="Shadow" />
+                {outline.layers === 2 ? <ColorField label={t('Outer')} value={outline.secondColor} onChange={(secondColor) => setOutline({ ...outline, secondColor })} /> : null}
+                <Toggle checked={outline.shadow} onChange={(shadow) => setOutline({ ...outline, shadow })} label={t('Shadow')} />
               </>
             ) : null}
           </div>
 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
-            <p className="section-title mb-2">Output</p>
+            <p className="section-title mb-2">{t('Output')}</p>
             <div className="mb-2">
-              <span className="label">Format</span>
+              <span className="label">{t('Format')}</span>
               <Segmented
                 size="sm"
                 value={format}
                 onChange={(value) => setFormat(value as 'png' | 'jpeg')}
                 options={[
-                  { value: 'png', label: 'PNG (alpha)' },
+                  { value: 'png', label: t('PNG (alpha)') },
                   { value: 'jpeg', label: 'JPEG' },
                 ]}
               />
@@ -475,38 +480,38 @@ export function BatchPage() {
               value={String(size)}
               onChange={(value) => setSize(Number(value))}
               options={[
-                { value: '0', label: 'Original' },
+                { value: '0', label: t('Original size') },
                 { value: '512', label: '512' },
                 { value: '1024', label: '1024' },
               ]}
             />
             <div className="mt-2">
-              <span className="label">File naming</span>
+              <span className="label">{t('File naming')}</span>
               <input
                 className="field text-[12px]"
                 value={naming}
                 onChange={(e) => setNaming(e.target.value)}
-                aria-label="File naming pattern"
+                aria-label={t('File naming pattern')}
               />
               <p className="mt-1 text-[10px] text-[var(--text-faint)]">
-                Tokens: <code className="font-mono">{'{name}'}</code> <code className="font-mono">{'{mode}'}</code>{' '}
+                {t('Tokens:')} <code className="font-mono">{'{name}'}</code> <code className="font-mono">{'{mode}'}</code>{' '}
                 <code className="font-mono">{'{date}'}</code>
               </p>
             </div>
           </div>
 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
-            <p className="section-title mb-1">Local resources</p>
-            <Slider label="Parallel workers" value={concurrency} min={1} max={4} onChange={setConcurrency} />
+            <p className="section-title mb-1">{t('Local resources')}</p>
+            <Slider label={t('Parallel workers')} value={concurrency} min={1} max={4} onChange={setConcurrency} />
             <p className="text-[10px] leading-relaxed text-[var(--text-faint)]">
-              Each worker holds a decoded frame plus the matte. On low-memory phones keep this at 1.
+              {t('Each worker holds a decoded frame plus the matte. On low-memory phones keep this at 1.')}
             </p>
             <div className="mt-1 border-t border-[var(--line)] pt-1">
               <Toggle
                 checked={autoSave}
                 onChange={setAutoSave}
-                label="Also save to My Space"
-                hint="Stores every successful output locally."
+                label={t('Also save to My Space')}
+                hint={t('Stores every successful output locally.')}
               />
             </div>
           </div>

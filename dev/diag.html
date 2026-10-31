@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Meme Studio — pipeline diagnostics</title>
+    <style>
+      body {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        background: #0c0e13;
+        color: #e9edf6;
+        margin: 0;
+        padding: 24px;
+      }
+      h1 {
+        font-size: 16px;
+      }
+      pre {
+        background: #14171f;
+        border: 1px solid #252b38;
+        border-radius: 10px;
+        padding: 14px;
+        white-space: pre-wrap;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      input {
+        margin-bottom: 12px;
+      }
+      canvas {
+        border: 1px solid #252b38;
+        border-radius: 8px;
+        max-width: 100%;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Meme Studio — pipeline diagnostics (dev only)</h1>
+    <input id="file" type="file" accept="image/*" />
+    <div class="row">
+      <canvas id="out" width="360" height="360"></canvas>
+      <canvas id="alpha" width="360" height="360"></canvas>
+      <canvas id="mask" width="360" height="360"></canvas>
+    </div>
+    <pre id="log">Pick an image…</pre>
+    <script type="module" src="/dev/diag.ts"></script>
+  </body>
+</html>

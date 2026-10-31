@@ -12,7 +12,7 @@
 
 ## The matte says “Colour fallback matte”
 
-The neural matte (RVM) could not run, so the app fell back to a colour-key matte. This is **approximate** and the
+The neural matte could not run (or came back empty), so the app fell back to a colour-key matte. This is **approximate** and the
 app says so on purpose. Common causes:
 
 - a very busy background (the fallback refuses to guess and keeps the whole image),

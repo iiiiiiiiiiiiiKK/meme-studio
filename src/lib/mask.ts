@@ -281,6 +281,257 @@ export function faceOvalMask(
   return feather > 0 ? blurMask(mask, width, height, feather) : mask;
 }
 
+export interface OvalBounds {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  width: number;
+  height: number;
+  centerX: number;
+  centerY: number;
+}
+
+export function ovalBounds(points: Array<[number, number]>): OvalBounds {
+  let left = Infinity;
+  let right = -Infinity;
+  let top = Infinity;
+  let bottom = -Infinity;
+  for (const [x, y] of points) {
+    if (x < left) left = x;
+    if (x > right) right = x;
+    if (y < top) top = y;
+    if (y > bottom) bottom = y;
+  }
+  return {
+    left,
+    right,
+    top,
+    bottom,
+    width: Math.max(1, right - left),
+    height: Math.max(1, bottom - top),
+    centerX: (left + right) / 2,
+    centerY: (top + bottom) / 2,
+  };
+}
+
+/**
+ * Builds the head region from the real FaceMesh contour.
+ *
+ * The contour already gives the forehead, temples, cheeks and chin exactly. What
+ * it does *not* contain is hair, because FaceMesh only tracks the face. The
+ * region therefore adds a generous dome above the forehead and widens below the
+ * chin for the bust modes.
+ *
+ * This region is only a *selector*: it is intersected with the person matte, so
+ * the final silhouette (hair, ears, shoulders) always comes from the neural
+ * matte and never from a geometric shape.
+ */
+export function buildHeadRegionMask(
+  width: number,
+  height: number,
+  oval: Array<[number, number]>,
+  box: Rect,
+  mode: CutMode,
+): Uint8ClampedArray {
+  const canvas = createCanvas(width, height);
+  const ctx = ctx2d(canvas);
+  ctx.fillStyle = '#ffffff';
+
+  const fallbackFaceW = Math.max(8, box.width);
+  const fallbackFaceH = Math.max(8, box.height);
+  const hasOval = oval.length > 4;
+  const b = hasOval
+    ? ovalBounds(oval)
+    : {
+        left: box.x,
+        right: box.x + fallbackFaceW,
+        top: box.y,
+        bottom: box.y + fallbackFaceH,
+        width: fallbackFaceW,
+        height: fallbackFaceH,
+        centerX: box.x + fallbackFaceW / 2,
+        centerY: box.y + fallbackFaceH / 2,
+      };
+
+  const faceW = b.width;
+  const faceH = b.height;
+  const cx = b.centerX;
+  const chin = b.bottom;
+
+  const fillOval = (): void => {
+    if (!hasOval) {
+      ctx.beginPath();
+      ctx.ellipse(cx, b.centerY, faceW * 0.5, faceH * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    ctx.beginPath();
+    ctx.moveTo(oval[0][0], oval[0][1]);
+    for (const [x, y] of oval.slice(1)) ctx.lineTo(x, y);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  const fillEllipse = (ex: number, ey: number, rx: number, ry: number): void => {
+    ctx.beginPath();
+    ctx.ellipse(ex, ey, Math.max(1, rx), Math.max(1, ry), 0, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  const fillTrapezoid = (topY: number, bottomY: number, topHalf: number, bottomHalf: number): void => {
+    ctx.beginPath();
+    ctx.moveTo(cx - topHalf, topY);
+    ctx.lineTo(cx + topHalf, topY);
+    ctx.lineTo(cx + bottomHalf, bottomY);
+    ctx.lineTo(cx - bottomHalf, bottomY);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  switch (mode) {
+    case 'background':
+    case 'full':
+      return new Uint8ClampedArray(width * height).fill(255);
+
+    case 'face':
+      fillOval();
+      break;
+
+    case 'head': {
+      // Face contour + hair dome + a sliver of neck below the chin.
+      fillOval();
+      fillEllipse(cx, b.top + faceH * 0.04, faceW * 0.68, faceH * 0.86);
+      fillTrapezoid(chin - faceH * 0.06, chin + faceH * 0.1, faceW * 0.34, faceW * 0.3);
+      break;
+    }
+
+    case 'head-neck': {
+      fillOval();
+      fillEllipse(cx, b.top + faceH * 0.04, faceW * 0.68, faceH * 0.86);
+      fillTrapezoid(chin - faceH * 0.06, chin + faceH * 0.62, faceW * 0.32, faceW * 0.26);
+      break;
+    }
+
+    case 'head-shoulders': {
+      fillOval();
+      fillEllipse(cx, b.top + faceH * 0.04, faceW * 0.68, faceH * 0.86);
+      fillTrapezoid(chin - faceH * 0.05, chin + faceH * 0.55, faceW * 0.34, faceW * 0.42);
+      fillTrapezoid(chin + faceH * 0.5, chin + faceH * 2.1, faceW * 0.42, faceW * 0.95);
+      fillEllipse(cx, chin + faceH * 1.5, faceW * 0.85, faceH * 0.7);
+      break;
+    }
+
+    case 'upper-body': {
+      fillOval();
+      fillEllipse(cx, b.top + faceH * 0.04, faceW * 0.68, faceH * 0.86);
+      fillTrapezoid(chin - faceH * 0.05, chin + faceH * 3.4, faceW * 0.4, faceW * 1.25);
+      break;
+    }
+  }
+
+  const mask = extractAlpha(canvas);
+  const feather = Math.max(0.6, Math.min(8, faceW * 0.012));
+  return blurMask(mask, width, height, feather);
+}
+
+/**
+ * Keeps only the connected component of `mask` that contains the seed point.
+ *
+ * This is what makes multi-person photos behave: the person matte contains
+ * everybody, and the component containing the chosen face is the only one that
+ * survives.
+ */
+export function selectComponent(
+  mask: Uint8ClampedArray,
+  width: number,
+  height: number,
+  seedX: number,
+  seedY: number,
+  threshold = 40,
+): { mask: Uint8ClampedArray; found: boolean } {
+  const sx = Math.max(0, Math.min(width - 1, Math.round(seedX)));
+  const sy = Math.max(0, Math.min(height - 1, Math.round(seedY)));
+  const out = new Uint8ClampedArray(mask.length);
+  const visited = new Uint8Array(mask.length);
+
+  // Walk to the nearest foreground pixel around the seed so a seed that lands in
+  // a soft alpha hole still selects the person.
+  let start = -1;
+  const radius = Math.max(6, Math.round(Math.min(width, height) * 0.02));
+  for (let r = 0; r <= radius && start < 0; r++) {
+    for (let dy = -r; dy <= r && start < 0; dy++) {
+      for (let dx = -r; dx <= r && start < 0; dx++) {
+        const x = sx + dx;
+        const y = sy + dy;
+        if (x < 0 || y < 0 || x >= width || y >= height) continue;
+        if (mask[y * width + x] > threshold) start = y * width + x;
+      }
+    }
+  }
+  if (start < 0) return { mask: out, found: false };
+
+  const queue = new Int32Array(mask.length);
+  let head = 0;
+  let tail = 0;
+  queue[tail++] = start;
+  visited[start] = 1;
+  while (head < tail) {
+    const idx = queue[head++];
+    out[idx] = mask[idx];
+    const x = idx % width;
+    const y = (idx - x) / width;
+    if (x > 0) {
+      const n = idx - 1;
+      if (!visited[n] && mask[n] > threshold) {
+        visited[n] = 1;
+        queue[tail++] = n;
+      }
+    }
+    if (x < width - 1) {
+      const n = idx + 1;
+      if (!visited[n] && mask[n] > threshold) {
+        visited[n] = 1;
+        queue[tail++] = n;
+      }
+    }
+    if (y > 0) {
+      const n = idx - width;
+      if (!visited[n] && mask[n] > threshold) {
+        visited[n] = 1;
+        queue[tail++] = n;
+      }
+    }
+    if (y < height - 1) {
+      const n = idx + width;
+      if (!visited[n] && mask[n] > threshold) {
+        visited[n] = 1;
+        queue[tail++] = n;
+      }
+    }
+  }
+  return { mask: out, found: true };
+}
+
+/**
+ * Sharpens the transition band of a soft matte.
+ *
+ * Neural mattes are deliberately soft. A sticker wants a crisp edge with a
+ * one-pixel anti-aliased rim, so the alpha is re-mapped with a smoothstep whose
+ * steepness is controlled by `crispness` (0 = untouched, 1 = fully binary).
+ */
+export function tightenAlpha(mask: Uint8ClampedArray, crispness = 0.55): Uint8ClampedArray {
+  if (crispness <= 0) return mask;
+  const out = new Uint8ClampedArray(mask.length);
+  const k = 1 + crispness * 6;
+  for (let i = 0; i < mask.length; i++) {
+    const t = mask[i] / 255;
+    const x = Math.min(1, Math.max(0, (t - 0.5) * k + 0.5));
+    out[i] = smoothstep(x) * 255;
+  }
+  return out;
+}
+
 /** Drop the alpha channel of a source canvas using the given mask. */
 export function applyMaskToCanvas(
   source: HTMLCanvasElement,

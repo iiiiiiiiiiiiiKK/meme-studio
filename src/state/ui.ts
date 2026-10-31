@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { Locale } from '../i18n/dictionary';
 
 export type Route =
   | 'home'
@@ -21,6 +22,7 @@ export interface Toast {
 export interface UiState {
   route: Route;
   theme: 'dark' | 'light';
+  locale: Locale;
   toasts: Toast[];
   engineStatus: 'idle' | 'loading' | 'ready' | 'error';
   engineMessage: string;
@@ -29,6 +31,7 @@ export interface UiState {
   publicationId: string | null;
   navigate: (route: Route, opts?: { publicationId?: string }) => void;
   setTheme: (theme: 'dark' | 'light') => void;
+  setLocale: (locale: Locale) => void;
   toast: (message: string, kind?: Toast['kind'], detail?: string) => void;
   dismissToast: (id: string) => void;
   setEngine: (status: UiState['engineStatus'], message?: string) => void;
@@ -37,6 +40,7 @@ export interface UiState {
 }
 
 const THEME_KEY = 'meme-studio:theme';
+const LOCALE_KEY = 'meme-studio:locale';
 
 function readTheme(): 'dark' | 'light' {
   try {
@@ -48,6 +52,18 @@ function readTheme(): 'dark' | 'light' {
   return 'dark';
 }
 
+function readLocale(): Locale {
+  try {
+    const stored = localStorage.getItem(LOCALE_KEY);
+    if (stored === 'zh' || stored === 'en') return stored;
+    // Follow the browser language on first visit so Chinese users land in Chinese.
+    if (typeof navigator !== 'undefined' && /^zh\b/i.test(navigator.language)) return 'zh';
+  } catch {
+    /* private mode */
+  }
+  return 'en';
+}
+
 export function applyTheme(theme: 'dark' | 'light'): void {
   document.documentElement.dataset.theme = theme;
   document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -55,9 +71,14 @@ export function applyTheme(theme: 'dark' | 'light'): void {
   if (meta) meta.setAttribute('content', theme === 'dark' ? '#0c0e13' : '#f4f5f7');
 }
 
+export function applyLocale(locale: Locale): void {
+  document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
+}
+
 export const useUi = create<UiState>((set, get) => ({
   route: 'home',
   theme: readTheme(),
+  locale: readLocale(),
   toasts: [],
   engineStatus: 'idle',
   engineMessage: 'Local models load on first use.',
@@ -81,6 +102,15 @@ export const useUi = create<UiState>((set, get) => ({
     applyTheme(theme);
     set({ theme });
   },
+  setLocale: (locale) => {
+    try {
+      localStorage.setItem(LOCALE_KEY, locale);
+    } catch {
+      /* ignore */
+    }
+    applyLocale(locale);
+    set({ locale });
+  },
   toast: (message, kind = 'info', detail) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     set({ toasts: [...get().toasts, { id, message, kind, detail }] });
@@ -90,8 +120,7 @@ export const useUi = create<UiState>((set, get) => ({
     }, ttl);
   },
   dismissToast: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
-  setEngine: (engineStatus, message) =>
-    set({ engineStatus, engineMessage: message ?? get().engineMessage }),
+  setEngine: (engineStatus, message) => set({ engineStatus, engineMessage: message ?? get().engineMessage }),
   setSearch: (search) => set({ search }),
   setMobileNav: (mobileNavOpen) => set({ mobileNavOpen }),
 }));

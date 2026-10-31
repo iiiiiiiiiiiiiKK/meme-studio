@@ -44,3 +44,8 @@ service-account*.json
 
 # Local test fixtures (not used by the automated suite)
 tests/fixtures/
+
+# Local scratch
+.tmp-test/
+dev-server.log
+preview.log
