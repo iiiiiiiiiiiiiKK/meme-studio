@@ -1,42 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import type { StoredAsset } from '../lib/db';
+import { assetUrl, peekAssetUrl, releaseAssetUrl } from '../lib/assetUrls';
 
-const cache = new Map<string, string>();
-
-/** Creates and revokes an object URL for a stored asset blob. */
+/**
+ * Returns a live object URL for a stored asset.
+ *
+ * The URL is memoised per asset id in `lib/assetUrls`, so the same blob is never
+ * turned into two URLs and deletion can revoke it from one place.
+ */
 export function useAssetUrl(asset: StoredAsset | { id: string; blob: Blob } | null): string | null {
-  const [url, setUrl] = useState<string | null>(() => (asset ? cache.get(asset.id) ?? null : null));
-
-  useEffect(() => {
-    if (!asset) {
-      setUrl(null);
-      return;
-    }
-    const existing = cache.get(asset.id);
-    if (existing) {
-      setUrl(existing);
-      return;
-    }
-    const objectUrl = URL.createObjectURL(asset.blob);
-    cache.set(asset.id, objectUrl);
-    setUrl(objectUrl);
+  return useMemo(() => {
+    if (!asset) return null;
+    return peekAssetUrl(asset.id) ?? assetUrl(asset);
   }, [asset]);
-
-  return url;
 }
 
-export function assetUrl(asset: { id: string; blob: Blob }): string {
-  const existing = cache.get(asset.id);
-  if (existing) return existing;
-  const url = URL.createObjectURL(asset.blob);
-  cache.set(asset.id, url);
-  return url;
-}
-
-export function releaseAssetUrl(id: string): void {
-  const url = cache.get(id);
-  if (url) {
-    URL.revokeObjectURL(url);
-    cache.delete(id);
-  }
-}
+export { assetUrl, releaseAssetUrl };

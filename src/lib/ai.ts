@@ -33,10 +33,17 @@ interface HumanResultLike {
   face: HumanFaceLike[];
 }
 
+interface HumanTensorLike {
+  shape: number[];
+  data(): Promise<Float32Array | Int32Array | Uint8Array>;
+  /** TensorFlow.js tensors hold GPU/WASM memory; callers own the result. */
+  dispose?(): void;
+}
+
 interface HumanInstance {
   load(config?: unknown): Promise<void>;
   detect(input: HTMLCanvasElement | HTMLImageElement, config?: unknown): Promise<HumanResultLike>;
-  segmentation(input: HTMLCanvasElement | HTMLImageElement, config?: unknown): Promise<{ shape: number[]; data(): Promise<Float32Array | Int32Array | Uint8Array> } | null>;
+  segmentation(input: HTMLCanvasElement | HTMLImageElement, config?: unknown): Promise<HumanTensorLike | null>;
   image(input: HTMLCanvasElement | HTMLImageElement, config?: unknown): Promise<unknown>;
   tf: {
     backend(): string;
@@ -285,8 +292,9 @@ export async function personAlpha(
   const human = await getEngine(onProgress);
   emit(onProgress, { stage: 'matting', message: 'Segmenting the person…' });
   const started = performance.now();
+  let tensor: HumanTensorLike | null = null;
   try {
-    const tensor = await human.segmentation(canvas, { segmentation: { enabled: true, modelPath: `${model}.json`, ratio: 0.5, mode: 'alpha' } });
+    tensor = await human.segmentation(canvas, { segmentation: { enabled: true, modelPath: `${model}.json`, ratio: 0.5, mode: 'alpha' } });
     if (!tensor) throw new Error('The segmentation model returned no result.');
     const shape = tensor.shape as number[];
     // `alpha` mode returns `[H, W, C]`; the default mode returns `[1, H, W, 4]`.
@@ -344,6 +352,11 @@ export async function personAlpha(
       note,
       elapsedMs: Math.round(performance.now() - started),
     } as MatteOutcome;
+  } finally {
+    // `human.segmentation()` hands ownership of its output tensor to the caller.
+    // Without this the WebGL/WASM allocation survives every cutout and a long
+    // batch eventually exhausts GPU memory.
+    tensor?.dispose?.();
   }
 }
 

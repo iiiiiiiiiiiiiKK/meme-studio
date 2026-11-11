@@ -18,7 +18,7 @@ import {
 import { useUi, AUTHOR_X_HANDLE, AUTHOR_X_URL } from '../state/ui';
 import { useI18n } from '../i18n';
 import { useLibrary } from '../state/library';
-import { clearAllData, storageEstimate } from '../lib/db';
+import { storageEstimate } from '../lib/db';
 import { formatBytes } from '../lib/image';
 import { getEngine, getEngineInfo, resetEngine } from '../lib/ai';
 import { Segmented, Spinner, StatusPill, Toggle } from '../components/ui';
@@ -80,8 +80,9 @@ export function SettingsPage() {
   }
 
   async function wipe(): Promise<void> {
-    await clearAllData();
-    await library.load();
+    // clearEverything() also revokes every object URL; calling clearAllData()
+    // alone would leave the URL cache pointing at deleted blobs.
+    await library.clearEverything();
     setConfirmWipe(false);
     toast(t('All local data was deleted from this device.'), 'success');
   }

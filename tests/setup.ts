@@ -41,6 +41,7 @@ class FakeContext2D {
   filter = 'none';
   shadowColor = '#000000';
   shadowBlur = 0;
+  globalCompositeOperation: GlobalCompositeOperation = 'source-over';
 
   private pixels: Px[];
   private path: Array<[number, number]> = [];
@@ -183,6 +184,20 @@ class FakeContext2D {
     const dw = rest.length === 2 ? sw : hasDest ? rest[2] : sw;
     const dh = rest.length === 2 ? sh : hasDest ? rest[3] : sh;
     const srcData = readPixels(source);
+    // `destination-in` keeps the destination colour but multiplies its alpha by
+    // the source alpha — used to clip an inner stroke to the subject.
+    if (this.globalCompositeOperation === 'destination-in') {
+      const copy = this.pixels.slice();
+      for (let y = 0; y < this.canvas.height; y++) {
+        for (let x = 0; x < this.canvas.width; x++) {
+          const index = y * this.canvas.width + x;
+          const src = srcData[Math.min(srcData.length - 1, y * sw + x)];
+          copy[index] = { ...copy[index], a: Math.round((copy[index].a * src.a) / 255) };
+        }
+      }
+      this.pixels = copy;
+      return;
+    }
     const copy = this.pixels.slice();
     for (let y = 0; y < Math.max(1, Math.round(dh)); y++) {
       for (let x = 0; x < Math.max(1, Math.round(dw)); x++) {
@@ -366,6 +381,20 @@ function readPixels(canvas: HTMLCanvasElement): Px[] {
 }
 
 const ctxStore = new WeakMap<HTMLCanvasElement, FakeContext2D>();
+
+// jsdom has no object-URL implementation; the app relies on it for blob images.
+if (typeof URL.createObjectURL !== 'function') {
+  let urlSeq = 0;
+  const live = new Map<string, Blob>();
+  URL.createObjectURL = ((blob: Blob) => {
+    const url = `blob:test/${++urlSeq}`;
+    live.set(url, blob);
+    return url;
+  }) as typeof URL.createObjectURL;
+  URL.revokeObjectURL = ((url: string) => {
+    live.delete(url);
+  }) as typeof URL.revokeObjectURL;
+}
 
 HTMLCanvasElement.prototype.getContext = function getContext(this: HTMLCanvasElement, type: string) {
   if (type !== '2d') return null;

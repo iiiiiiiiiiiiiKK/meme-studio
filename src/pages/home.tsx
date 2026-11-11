@@ -332,16 +332,20 @@ export async function openProject(id: string): Promise<void> {
   const { getProject } = await import('../lib/db');
   const { useEditor } = await import('../state/editor');
   const { useUi } = await import('../state/ui');
+  const { hydrateProjectLayers } = await import('../lib/hydrate');
   const project = await getProject(id);
   if (!project) {
     const { locale } = useUi.getState();
     useUi.getState().toast(translate(locale, 'That project no longer exists on this device.'), 'error');
     return;
   }
+  // Object URLs are scoped to the document that created them, so every saved
+  // image layer is rebuilt from its IndexedDB blob before the project opens.
+  const hydrated = await hydrateProjectLayers(project.layers);
   useEditor.getState().setProject({
     id: project.id,
     name: project.name,
-    layers: project.layers,
+    layers: hydrated.layers,
     settings: {
       width: project.width,
       height: project.height,
@@ -350,6 +354,14 @@ export async function openProject(id: string): Promise<void> {
       snap: project.snap,
     },
   });
+  if (hydrated.missing.length) {
+    const { locale } = useUi.getState();
+    useUi.getState().toast(
+      translate(locale, '{count} layer image(s) could not be restored.', { count: hydrated.missing.length }),
+      'error',
+      hydrated.missing.join(', '),
+    );
+  }
   useUi.getState().navigate('editor');
 }
 

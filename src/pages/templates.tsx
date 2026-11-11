@@ -14,6 +14,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useUi } from '../state/ui';
+import { useEditor } from '../state/editor';
 import { formatDate, useI18n } from '../i18n';
 import { listPresets, savePreset, deletePreset } from '../lib/db';
 import type { PresetKind, PresetRecord } from '../types';
@@ -140,7 +141,7 @@ const BUILTINS: BuiltinTemplate[] = [
 
 export function TemplatesPage() {
   const { t, locale } = useI18n();
-  const { toast, navigate } = useUi();
+  const { toast, navigate, setPendingPreset } = useUi();
   const [presets, setPresets] = useState<PresetRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [kind, setKind] = useState<PresetKind | 'all'>('all');
@@ -202,19 +203,22 @@ export function TemplatesPage() {
       return;
     }
     if (template.kind === 'export' || template.kind === 'batch') {
+      // Hand the payload to the target page, which applies it on mount.
+      setPendingPreset({ kind: template.kind, payload: template.payload, id: template.id });
       navigate(template.kind === 'export' ? 'editor' : 'batch');
       toast(
         t('“{name}” applied to the {kind} panel.', {
           name: t(template.name),
           kind: template.kind === 'export' ? t('Export') : t('Batch'),
         }),
-        'info',
+        'success',
       );
       return;
     }
     if (template.kind === 'extract' || template.kind === 'outline') {
+      setPendingPreset({ kind: template.kind, payload: template.payload, id: template.id });
       navigate('create');
-      toast(t('“{name}” is ready in Create.', { name: t(template.name) }), 'info');
+      toast(t('“{name}” is ready in Create.', { name: t(template.name) }), 'success');
       return;
     }
     toast(t('Preset applied.'), 'success');
@@ -222,12 +226,31 @@ export function TemplatesPage() {
 
   async function saveCurrent(): Promise<void> {
     if (!name.trim()) return;
+    // Snapshot what the target panel is actually set to, so a saved preset is
+    // reusable instead of an empty placeholder.
+    const cutout = useUi.getState().cutout;
+    let payload: Record<string, unknown> = {};
+    if ((saveKind === 'outline' || saveKind === 'extract') && cutout) {
+      payload =
+        saveKind === 'outline'
+          ? { outline: cutout.outline }
+          : { mode: cutout.mode, feather: cutout.feather, expand: cutout.expand, edgeSmooth: cutout.edgeSmooth };
+    } else if (saveKind === 'canvas') {
+      const editor = useEditor.getState();
+      payload = {
+        width: editor.settings.width,
+        height: editor.settings.height,
+        background: editor.settings.background,
+        grid: editor.settings.grid,
+        snap: editor.settings.snap,
+      };
+    }
     const preset: PresetRecord = {
       id: crypto.randomUUID ? crypto.randomUUID() : `preset_${Date.now()}`,
       name: name.trim(),
       kind: saveKind,
       createdAt: Date.now(),
-      payload: {},
+      payload,
       favorite: false,
     };
     await savePreset(preset);

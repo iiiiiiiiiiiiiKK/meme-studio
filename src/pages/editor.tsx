@@ -33,7 +33,7 @@ import { useEditor, createTextLayer, createShapeLayer, createImageLayer } from '
 import { useI18n } from '../i18n';
 import { useUi } from '../state/ui';
 import { storeCanvasAsAsset } from '../state/library';
-import { renderScene, DEFAULT_EXPORT, type ExportOptions } from '../lib/render';
+import { renderScene, DEFAULT_EXPORT, formatSupportsAlpha, type ExportOptions } from '../lib/render';
 import { canvasToBlob, downloadBlob, formatBytes, makeThumbnail } from '../lib/image';
 import { loadImageElement } from '../lib/render';
 import { Modal, Slider, ColorField, Toggle, Segmented, Spinner } from '../components/ui';
@@ -106,6 +106,21 @@ export function EditorPage() {
     },
     [t, toast],
   );
+
+  // Apply an "export" preset handed over from Templates, once.
+  useEffect(() => {
+    const pendingPreset = useUi.getState().pendingPreset;
+    if (!pendingPreset || pendingPreset.kind !== 'export') return;
+    useUi.getState().setPendingPreset(null);
+    const p = pendingPreset.payload as Record<string, unknown>;
+    setExportOptions((prev) => ({
+      ...prev,
+      format: p.format === 'png' || p.format === 'jpeg' || p.format === 'webp' ? p.format : prev.format,
+      scale: typeof p.scale === 'number' ? p.scale : prev.scale,
+      transparent: typeof p.transparent === 'boolean' ? p.transparent : prev.transparent,
+    }));
+    toast(t('Preset applied.'), 'success');
+  }, [t, toast]);
 
   // autosave
   useEffect(() => {
@@ -186,6 +201,7 @@ export function EditorPage() {
   }
 
   function beginHandle(e: React.PointerEvent, layer: Layer, handle: Handle) {
+    if (layer.locked) return;
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     setDrag({
@@ -625,7 +641,16 @@ export function EditorPage() {
             <span className="label">{t('Format')}</span>
             <Segmented
               value={exportOptions.format}
-              onChange={(format) => setExportOptions({ ...exportOptions, format })}
+              onChange={(format) => {
+                // JPEG cannot store alpha, so it always gets a filled background
+                // instead of silently flattening transparency into black.
+                const next = format as ExportOptions['format'];
+                setExportOptions({
+                  ...exportOptions,
+                  format: next,
+                  transparent: formatSupportsAlpha(next) ? exportOptions.transparent : false,
+                });
+              }}
               options={[
                 { value: 'png', label: t('PNG · alpha') },
                 { value: 'jpeg', label: 'JPEG' },
@@ -647,13 +672,19 @@ export function EditorPage() {
           </div>
           {exportOptions.format !== 'png' ? (
             <>
-              <Toggle
-                checked={exportOptions.transparent}
-                onChange={(transparent) => setExportOptions({ ...exportOptions, transparent })}
-                label={t('Transparent background')}
-                hint={t('JPEG has no alpha channel; WebP does.')}
-              />
-              {!exportOptions.transparent ? (
+              {formatSupportsAlpha(exportOptions.format) ? (
+                <Toggle
+                  checked={exportOptions.transparent}
+                  onChange={(transparent) => setExportOptions({ ...exportOptions, transparent })}
+                  label={t('Transparent background')}
+                  hint={t('WebP keeps alpha; JPEG does not.')}
+                />
+              ) : (
+                <p className="rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 text-[11px] text-[var(--text-faint)]">
+                  {t('JPEG has no alpha channel, so the background is filled in.')}
+                </p>
+              )}
+              {!exportOptions.transparent || !formatSupportsAlpha(exportOptions.format) ? (
                 <ColorField
                   label={t('Background')}
                   value={exportOptions.background}
@@ -759,25 +790,30 @@ function LayerView({
             className="pointer-events-none absolute -inset-0.5 border-2"
             style={{ borderColor: 'var(--accent)', boxShadow: '0 0 0 1px rgba(0,0,0,0.35)' }}
           />
-          {handles.map((h) => (
+          {/* A locked layer shows only its frame: no resize or rotate handles. */}
+          {!layer.locked
+            ? handles.map((h) => (
+                <button
+                  key={h.id}
+                  type="button"
+                  aria-label={t('Resize {dir}', { dir: h.id ?? '' })}
+                  className="absolute z-10 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-[2px] border border-black/40 bg-[var(--accent)]"
+                  style={{ left: h.x, top: h.y, cursor: h.cursor }}
+                  onPointerDown={(e) => onHandle(e, h.id)}
+                />
+              ))
+            : null}
+          {!layer.locked ? (
             <button
-              key={h.id}
               type="button"
-              aria-label={t('Resize {dir}', { dir: h.id ?? '' })}
-              className="absolute z-10 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-[2px] border border-black/40 bg-[var(--accent)]"
-              style={{ left: h.x, top: h.y, cursor: h.cursor }}
-              onPointerDown={(e) => onHandle(e, h.id)}
-            />
-          ))}
-          <button
-            type="button"
-            aria-label={t('Rotate layer')}
-            className="absolute left-1/2 z-10 grid h-6 w-6 -translate-x-1/2 place-items-center rounded-full border border-black/40 bg-[var(--accent)] text-[var(--accent-ink)]"
-            style={{ top: -30 }}
-            onPointerDown={(e) => onHandle(e, 'rot')}
-          >
-            <RotateCw size={11} />
-          </button>
+              aria-label={t('Rotate layer')}
+              className="absolute left-1/2 z-10 grid h-6 w-6 -translate-x-1/2 place-items-center rounded-full border border-black/40 bg-[var(--accent)] text-[var(--accent-ink)]"
+              style={{ top: -30 }}
+              onPointerDown={(e) => onHandle(e, 'rot')}
+            >
+              <RotateCw size={11} />
+            </button>
+          ) : null}
         </>
       ) : null}
     </div>

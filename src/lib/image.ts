@@ -50,20 +50,48 @@ export function bitmapToCanvas(bitmap: ImageBitmap | HTMLImageElement, maxSide =
   return canvas;
 }
 
+/** Refuse inputs whose full-resolution decode would likely exhaust browser memory. */
+export const MAX_INPUT_BYTES = 40 * 1024 * 1024;
+/** Upper bound on decoded pixels before downscaling. */
+export const MAX_INPUT_PIXELS = 60_000_000;
+
+export class ImageTooLargeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ImageTooLargeError';
+  }
+}
+
+function assertDecodableSize(width: number, height: number): void {
+  if (width * height > MAX_INPUT_PIXELS) {
+    throw new ImageTooLargeError(
+      `That image is ${width}×${height} (${Math.round((width * height) / 1e6)} MP). The limit is ${MAX_INPUT_PIXELS / 1e6} MP.`,
+    );
+  }
+}
+
 export async function decodeToCanvas(file: Blob, maxSide = 2048): Promise<HTMLCanvasElement> {
+  if (file.size > MAX_INPUT_BYTES) {
+    throw new ImageTooLargeError(
+      `That file is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is ${MAX_INPUT_BYTES / 1024 / 1024} MB.`,
+    );
+  }
   if ('createImageBitmap' in window) {
     try {
       const bitmap = await createImageBitmap(file);
       try {
+        assertDecodableSize(bitmap.width, bitmap.height);
         return bitmapToCanvas(bitmap, maxSide);
       } finally {
         bitmap.close();
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof ImageTooLargeError) throw error;
       // fall through to <img> decoding (Safari quirks)
     }
   }
   const img = await blobToImage(file);
+  assertDecodableSize(img.naturalWidth, img.naturalHeight);
   const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
   const canvas = createCanvas(img.naturalWidth * scale, img.naturalHeight * scale);
   ctx2d(canvas).drawImage(img, 0, 0, canvas.width, canvas.height);

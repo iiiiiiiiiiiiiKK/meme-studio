@@ -14,6 +14,7 @@ import {
   type StoredProject,
 } from '../lib/db';
 import { makeThumbnail, canvasToBlob } from '../lib/image';
+import { assetUrl, releaseAllAssetUrls, releaseAssetUrl } from '../lib/assetUrls';
 
 export type LibraryFilter = 'all' | AssetKind | 'favorites' | 'trash';
 export type LibrarySort = 'newest' | 'oldest' | 'name' | 'size';
@@ -28,7 +29,6 @@ export interface LibraryState {
   query: string;
   selection: string[];
   usage: { usage: number; quota: number };
-  objectUrls: Record<string, string>;
   load: () => Promise<void>;
   setFilter: (filter: LibraryFilter) => void;
   setSort: (sort: LibrarySort) => void;
@@ -75,7 +75,6 @@ export const useLibrary = create<LibraryState>((set, get) => ({
   query: '',
   selection: [],
   usage: { usage: 0, quota: 0 },
-  objectUrls: {},
   load: async () => {
     set({ loading: true });
     try {
@@ -141,12 +140,8 @@ export const useLibrary = create<LibraryState>((set, get) => ({
   },
   purge: async (id) => {
     await deleteAssetRow(id);
-    const urls = { ...get().objectUrls };
-    if (urls[id]) {
-      URL.revokeObjectURL(urls[id]);
-      delete urls[id];
-    }
-    set({ assets: get().assets.filter((a) => a.id !== id), selection: get().selection.filter((s) => s !== id), objectUrls: urls });
+    releaseAssetUrl(id);
+    set({ assets: get().assets.filter((a) => a.id !== id), selection: get().selection.filter((s) => s !== id) });
   },
   toggleFavorite: async (id) => {
     const asset = get().assets.find((a) => a.id === id);
@@ -177,16 +172,10 @@ export const useLibrary = create<LibraryState>((set, get) => ({
   },
   clearEverything: async () => {
     await clearAllData();
-    Object.values(get().objectUrls).forEach((url) => URL.revokeObjectURL(url));
-    set({ assets: [], projects: [], selection: [], objectUrls: {}, usage: { usage: 0, quota: 0 } });
+    releaseAllAssetUrls();
+    set({ assets: [], projects: [], presetsLoaded: 0, selection: [], usage: { usage: 0, quota: 0 } });
   },
-  urlFor: (asset) => {
-    const cached = get().objectUrls[asset.id];
-    if (cached) return cached;
-    const url = URL.createObjectURL(asset.blob);
-    set({ objectUrls: { ...get().objectUrls, [asset.id]: url } });
-    return url;
-  },
+  urlFor: (asset) => assetUrl(asset),
   visibleAssets: () => {
     const { assets, filter, sort, query } = get();
     const q = query.trim().toLowerCase();

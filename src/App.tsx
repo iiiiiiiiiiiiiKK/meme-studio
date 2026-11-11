@@ -40,15 +40,21 @@ export function App() {
   useEffect(() => {
     const applyHash = () => {
       const hash = window.location.hash.replace(/^#\/?/, '');
-      const [head, tail] = hash.split('/');
-      if (!head) return;
+      if (!hash) return;
+      const slash = hash.indexOf('/');
+      const head = slash === -1 ? hash : hash.slice(0, slash);
+      // Publication ids may contain slashes, so keep everything after the first.
+      const tail = slash === -1 ? '' : hash.slice(slash + 1);
       if (head === 'publication' && tail) {
-        useUi.setState({ route: 'publication', publicationId: tail });
+        useUi.setState({ route: 'publication', publicationId: decodeURIComponent(tail) });
         return;
       }
       if (ROUTES.includes(head as Route) && head !== 'publication') {
         useUi.setState({ route: head as Route, publicationId: null });
+        return;
       }
+      // Unknown hash: fall back to the home route instead of showing a blank page.
+      useUi.setState({ route: 'home', publicationId: null });
     };
     applyHash();
     window.addEventListener('hashchange', applyHash);

@@ -91,14 +91,27 @@ export function renderOutlined(
 ): OutlinedResult {
   const { width, height } = source;
   const layers = computeStrokeLayers(alpha, width, height, settings);
+  const outerLayers = layers.filter((layer) => !layer.inner);
+  const innerLayers = layers.filter((layer) => layer.inner);
   const padding = Math.max(0, options.padding ?? 0);
-  const spread = settings.enabled
-    ? Math.max(settings.thickness + (settings.layers === 2 ? settings.secondThickness : 0), settings.inner) +
-      (settings.shadow ? settings.shadowBlur : 0) +
-      padding
-    : padding;
 
-  const bounds = settings.enabled || padding > 0 ? visibleBounds(alpha, width, height, spread) : { x: 0, y: 0, width, height };
+  // Everything that can paint outside the subject has to be part of the margin:
+  // the strokes themselves, the glow blur radius, and the shadow blur plus its
+  // downward offset.
+  const strokeSpread = Math.max(
+    settings.thickness + (settings.layers === 2 ? settings.secondThickness : 0),
+    settings.inner,
+  );
+  const glowSpread = settings.enabled && settings.glow ? settings.thickness + 4 + 2 : 0;
+  const shadowSpread = settings.enabled && settings.shadow
+    ? settings.shadowBlur * 2 + Math.max(2, settings.shadowBlur * 0.35)
+    : 0;
+  const spread = settings.enabled ? strokeSpread + Math.max(glowSpread, shadowSpread) + padding : padding;
+
+  const bounds =
+    settings.enabled || padding > 0
+      ? paddedBounds(alpha, width, height, spread)
+      : { x: 0, y: 0, width, height };
 
   const canvas = createCanvas(bounds.width, bounds.height);
   const ctx = ctx2d(canvas);
@@ -106,7 +119,7 @@ export function renderOutlined(
   const offsetY = -bounds.y;
 
   // Soft shadow / glow silhouettes are painted using the largest available shape.
-  const silhouette = layers.length ? layers[0].alpha : alpha;
+  const silhouette = outerLayers.length ? outerLayers[0].alpha : alpha;
 
   if (settings.enabled && settings.shadow) {
     const shadowCanvas = createCanvas(width, height);
@@ -129,7 +142,8 @@ export function renderOutlined(
     ctx.restore();
   }
 
-  for (const layer of layers) {
+  // Outer strokes sit behind the subject.
+  for (const layer of outerLayers) {
     const layerCanvas = createCanvas(width, height);
     paintMask(ctx2d(layerCanvas), layer.alpha, width, height, layer.color);
     ctx.drawImage(layerCanvas, offsetX, offsetY);
@@ -145,6 +159,22 @@ export function renderOutlined(
   }
   subjectCtx.putImageData(image, 0, 0);
   ctx.drawImage(subject, offsetX, offsetY);
+
+  // Inner strokes are painted *on* the subject, clipped to the subject alpha so
+  // they can never bleed outside it.
+  if (innerLayers.length) {
+    const clipCanvas = createCanvas(width, height);
+    const clipCtx = ctx2d(clipCanvas);
+    paintMask(clipCtx, alpha, width, height, '#ffffff');
+    for (const layer of innerLayers) {
+      const layerCanvas = createCanvas(width, height);
+      const lctx = ctx2d(layerCanvas);
+      paintMask(lctx, layer.alpha, width, height, layer.color);
+      lctx.globalCompositeOperation = 'destination-in';
+      lctx.drawImage(clipCanvas, 0, 0);
+      ctx.drawImage(layerCanvas, offsetX, offsetY);
+    }
+  }
 
   return { canvas, offsetX: bounds.x, offsetY: bounds.y, width: bounds.width, height: bounds.height };
 }
@@ -207,7 +237,50 @@ export function visibleBounds(
   return { x: x0, y: y0, width: x1 - x0 + 1, height: y1 - y0 + 1 };
 }
 
-/** Softens the mask edge before it is used for a cutout. */
+/**
+ * Bounds that may extend **outside** the source canvas.
+ *
+ * The plain `visibleBounds` clamps to the image, which silently crops a stroke,
+ * shadow or glow belonging to a subject that touches the edge. Stickers must be
+ * able to grow past the original frame, so this variant keeps negative x/y and
+ * sizes larger than the source.
+ */
+export function paddedBounds(
+  alpha: Uint8ClampedArray,
+  width: number,
+  height: number,
+  padding = 0,
+  threshold = 1,
+): Bounds {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      if (alpha[row + x] > threshold) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0 || maxY < 0) {
+    return { x: 0, y: 0, width, height };
+  }
+  const pad = Math.max(0, Math.round(padding));
+  const x0 = minX - pad;
+  const y0 = minY - pad;
+  const x1 = maxX + pad;
+  const y1 = maxY + pad;
+  return { x: x0, y: y0, width: x1 - x0 + 1, height: y1 - y0 + 1 };
+}
+
+/**
+ * Softens the mask edge before it is used for a cutout.
+ */
 export function featherAlpha(
   alpha: Uint8ClampedArray,
   width: number,

@@ -55,7 +55,7 @@ falls back to the WASM backend; without either, the clearly-labelled colour matt
 | `npm run dev` | Vite dev server |
 | `npm run build` | Type-check and produce the production bundle in `dist/` |
 | `npm run preview` | Serve the production bundle locally |
-| `npm test` | Vitest unit suite (44 tests) |
+| `npm test` | Vitest unit suite (57 tests) |
 | `npm run e2e` | Playwright suite (23 tests: desktop Chromium + mobile WebKit) |
 | `npm run screenshots` | Regenerate the images in `docs/screenshots` |
 
@@ -193,7 +193,7 @@ WASM；两者都不可用时使用带明确标注的色彩蒙版。
 - **Discover 是随包发布的新手素材包**，并非带账号与发布的多用户社区；真实社区后端在路线图中，但本版本未包含。
 - **头部提取质量取决于原图**：强逆光、帽子、运动模糊或人脸小于约 40 px 时效果下降，Mask 标签页可手动修补。
 - **强烈建议使用 WebGL**，否则退回 WASM，处理大图明显变慢。
-- **暂无云同步**，也**暂无多语言界面**。
+- **暂无云同步**。界面已支持**英文 / 简体中文**切换（设置页），语言与主题都保存在本机。
 
 ### 许可证
 

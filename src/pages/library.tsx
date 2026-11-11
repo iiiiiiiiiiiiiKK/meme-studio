@@ -272,16 +272,7 @@ export function LibraryPage() {
         onClose={() => setDetail(null)}
         onDeleted={() => setDetail(null)}
         onOpenEditor={async (asset) => {
-          const canvas = document.createElement('canvas');
-          canvas.width = asset.width;
-          canvas.height = asset.height;
-          const ctx = canvas.getContext('2d');
-          const img = new Image();
-          img.src = useLibrary.getState().urlFor(asset);
-          await img.decode().catch(() => undefined);
-          ctx?.drawImage(img, 0, 0);
-          if (!ctx) return;
-          await openStickerInEditor(canvas, asset.name, asset.id);
+          await openStickerInEditor(asset);
           setDetail(null);
         }}
       />
@@ -609,26 +600,33 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-async function openStickerInEditor(canvas: HTMLCanvasElement, name: string, assetId: string): Promise<void> {
+async function openStickerInEditor(asset: StoredAsset): Promise<void> {
   const { useEditor, createImageLayer } = await import('../state/editor');
+  const { assetUrl } = await import('../lib/assetUrls');
   const editor = useEditor.getState();
-  const width = Math.max(800, canvas.width * 2);
-  const height = Math.max(800, canvas.height * 2);
+  const canvasWidth = asset.width;
+  const canvasHeight = asset.height;
+  const width = Math.max(800, canvasWidth * 2);
+  const height = Math.max(800, canvasHeight * 2);
   const projectId = crypto.randomUUID ? crypto.randomUUID() : `p_${Date.now()}`;
-  const url = canvas.toDataURL('image/png');
+  // A blob URL + assetId keeps the project record small and lets the layer be
+  // restored from IndexedDB on the next load (see lib/hydrate.ts).
+  const url = assetUrl(asset);
+  const name = asset.name;
+  const assetId = asset.id;
   editor.setProject({
     id: projectId,
     name: `${name} meme`,
     layers: [
       createImageLayer({
         src: url,
-        naturalWidth: canvas.width,
-        naturalHeight: canvas.height,
+        naturalWidth: canvasWidth,
+        naturalHeight: canvasHeight,
         assetId,
-        x: Math.round((width - canvas.width) / 2),
-        y: Math.round((height - canvas.height) / 2),
-        width: canvas.width,
-        height: canvas.height,
+        x: Math.round((width - canvasWidth) / 2),
+        y: Math.round((height - canvasHeight) / 2),
+        width: canvasWidth,
+        height: canvasHeight,
         name,
       }),
     ],

@@ -30,8 +30,8 @@ npx tsc --noEmit -p tsconfig.json
 
 ```
 npx vitest run
-→ Test Files  6 passed (6)
-→ Tests       44 passed (44)
+→ Test Files  7 passed (7)
+→ Tests       57 passed (57)
 ```
 
 | File | Tests | What it covers |
@@ -42,8 +42,9 @@ npx vitest run
 | `tests/render.test.ts` | 7 | text renders real pixels on a transparent canvas, a solid background is honoured when transparency is off, 2× export doubles the dimensions, hidden layers are skipped, single-layer export works, export names are sanitised, an empty scene exports fully transparent pixels |
 | `tests/region.test.ts` | 11 | landmark-driven head regions (hair included, face mode excludes hair, bust crops reach lower/wider, box fallback), connected-component isolation, alpha tightening |
 | `tests/db.test.ts` | 6 | asset round-trip, update and delete, project layers persist, presets filter by kind, meta round-trip, `clearAllData` wipes every store |
+| `tests/regressions.test.ts` | 13 | `paddedBounds` grows past the source so edge strokes are not cropped, the inner stroke is composited **on top of** the subject, glow/shadow get output margin, outer and inner stroke layers stay distinct, single-layer export keeps the layer opacity, `formatSupportsAlpha`, one object URL per asset id + release, project image layers rehydrate from IndexedDB (`hydrateProjectLayers`), missing assets are reported, text layers untouched, oversized files are rejected before decoding |
 
-The Canvas 2D API is provided by a purpose-written software rasteriser in `tests/setup.ts`, so the tests exercise the **real** rendering code rather than a mock.
+The Canvas 2D API is provided by a purpose-written software rasteriser in `tests/setup.ts`, so the tests exercise the **real** rendering code rather than a mock. It implements `destination-in` compositing and `URL.createObjectURL` so clipping and hydration can be asserted.
 
 ## 4. End-to-end tests
 
@@ -78,12 +79,13 @@ The desktop project runs on a 1440×900 viewport, the mobile project runs in **W
 npx vite build
 ✓ 1626 modules transformed
 dist/index.html                    1.25 kB │ gzip:   0.63 kB
-dist/assets/index-*.css           29.78 kB │ gzip:   6.61 kB
-dist/assets/index-*.js           179.65 kB │ gzip:  49.68 kB
+dist/assets/index-*.css           30.05 kB │ gzip:   6.65 kB
+dist/assets/hydrate-*.js           0.44 kB │ gzip:   0.29 kB
+dist/assets/matte-fallback-*.js    1.57 kB │ gzip:   0.85 kB
+dist/assets/index-*.js           215.20 kB │ gzip:  67.95 kB
 dist/assets/vendor-*.js          276.64 kB │ gzip:  84.60 kB
 dist/assets/human-*.js         1,577.34 kB │ gzip: 422.84 kB
-dist/assets/matte-fallback-*.js   1.57 kB │ gzip:   0.85 kB
-✓ built in ~6 s
+✓ built in ~15 s
 ```
 
 `human-*.js` is the TensorFlow.js bundle. It is loaded lazily (dynamic `import()` inside `lib/ai.ts`), so the initial page load does not pay for it — it is only fetched when the user actually runs a cutout.
@@ -94,7 +96,7 @@ The three model files add ~6.2 MB to `dist/` and are fetched once, then served f
 
 | Area | Result |
 | --- | --- |
-| Local AI engine | Starts in the browser, backend `webgl`, RVM matte produced in ~7.9 s on a 160×160 test image (first run includes the model download) |
+| Local AI engine | Starts in the browser, backend `webgl`; the default matte is MediaPipe Selfie Segmentation (~0.6 s on a 1280 px photo after the first download) |
 | Face detection | Reports `0 faces` for a synthetic image with no face and switches the UI to Background mode with an explicit notice |
 | Matte fallback | Colour fallback engages only when the neural path fails and is labelled `Colour fallback matte` in the UI |
 | Outline | Produces a real dilated stroke around the subject; the exported PNG keeps alpha in the corners |
@@ -109,4 +111,4 @@ The three model files add ~6.2 MB to `dist/` and are fetched once, then served f
 - **No account system, hosted community or cloud sync.** The Discover tab ships the locally rendered starter pack instead, and the UI states this explicitly.
 - **No Playwright test drives the head-extraction path with a real photograph.** The E2E suite uses synthetic images (which have no face). The head geometry is covered by unit tests and by manual runs of the local engine.
 - **No service worker.** The app is not yet installable as a PWA; see the roadmap.
-- **No i18n.** Only English strings ship.
+- **Model quality on real portraits is verified manually, not automatically.** A golden-image suite with redistributable portrait fixtures is the next step; see the roadmap in ARCHITECTURE.md.

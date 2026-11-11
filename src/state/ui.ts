@@ -1,5 +1,22 @@
 import { create } from 'zustand';
 import type { Locale } from '../i18n/dictionary';
+import type { CutMode, OutlineSettings, PresetKind } from '../types';
+
+/** Cutout settings that a preset of kind `outline` / `extract` can carry. */
+export interface CutoutSnapshot {
+  mode: CutMode;
+  feather: number;
+  expand: number;
+  edgeSmooth: number;
+  outline: OutlineSettings;
+}
+
+/** A preset waiting to be applied by the page that owns those settings. */
+export interface PendingPreset {
+  kind: PresetKind;
+  payload: Record<string, unknown>;
+  id: string;
+}
 
 export type Route =
   | 'home'
@@ -29,6 +46,12 @@ export interface UiState {
   mobileNavOpen: boolean;
   search: string;
   publicationId: string | null;
+  /** Latest cutout settings, so the Templates page can snapshot them. */
+  cutout: CutoutSnapshot | null;
+  /** Preset a page still has to consume after navigating. */
+  pendingPreset: PendingPreset | null;
+  setCutout: (snapshot: CutoutSnapshot) => void;
+  setPendingPreset: (preset: PendingPreset | null) => void;
   navigate: (route: Route, opts?: { publicationId?: string }) => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setLocale: (locale: Locale) => void;
@@ -85,6 +108,10 @@ export const useUi = create<UiState>((set, get) => ({
   mobileNavOpen: false,
   search: '',
   publicationId: null,
+  cutout: null,
+  pendingPreset: null,
+  setCutout: (cutout) => set({ cutout }),
+  setPendingPreset: (pendingPreset) => set({ pendingPreset }),
   navigate: (route, opts) => {
     set({ route, publicationId: opts?.publicationId ?? null, mobileNavOpen: false });
     if (typeof window !== 'undefined') {

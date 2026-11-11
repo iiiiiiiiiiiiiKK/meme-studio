@@ -42,6 +42,24 @@ export function BatchPage() {
   const pauseRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
+  const itemsRef = useRef<BatchItem[]>(items);
+  itemsRef.current = items;
+
+  // A "batch" preset from Templates is applied once, then cleared.
+  useEffect(() => {
+    const pendingPreset = useUi.getState().pendingPreset;
+    if (!pendingPreset || pendingPreset.kind !== 'batch') return;
+    useUi.getState().setPendingPreset(null);
+    const p = pendingPreset.payload as Record<string, unknown>;
+    if (typeof p.mode === 'string') setMode(p.mode as CutMode);
+    if (typeof p.thickness === 'number' || typeof p.color === 'string') {
+      setOutline((prev) => ({ ...prev, ...(p as Partial<OutlineSettings>) }));
+    }
+    if (typeof p.size === 'number') setSize(p.size);
+    if (p.format === 'png' || p.format === 'jpeg') setFormat(p.format);
+    if (typeof p.naming === 'string') setNaming(p.naming);
+    toast(t('Preset applied.'), 'success');
+  }, [t, toast]);
 
   const pending = items.filter((i) => i.status === 'queued');
   const done = items.filter((i) => i.status === 'done');
@@ -148,12 +166,15 @@ export function BatchPage() {
     [autoSave, format, mode, outline, size],
   );
 
-  const runQueue = useCallback(async () => {
+  const runQueue = useCallback(async (list?: BatchItem[]) => {
     if (runState === 'running') return;
     cancelRef.current = false;
     pauseRef.current = false;
     setRunState('running');
-    const queue = items.filter((i) => i.status === 'queued' || i.status === 'failed');
+    // Always drive the queue from the freshest list: `retryFailed()` would
+    // otherwise reuse whatever `items` the closure captured.
+    const source = list ?? itemsRef.current;
+    const queue = source.filter((i) => i.status === 'queued' || i.status === 'failed');
     if (!queue.length) {
       setRunState('idle');
       toast(t('Nothing queued. Add images first.'), 'info');
@@ -178,7 +199,7 @@ export function BatchPage() {
       setRunState('done');
       toast(t('Batch finished. Check the failed items if any.'), 'success');
     }
-  }, [concurrency, items, processOne, runState, t, toast]);
+  }, [concurrency, processOne, runState, t, toast]);
 
   function pause() {
     pauseRef.current = true;
@@ -197,8 +218,24 @@ export function BatchPage() {
   }
 
   function retryFailed() {
-    setItems((prev) => prev.map((i) => (i.status === 'failed' ? { ...i, status: 'queued', error: undefined } : i)));
-    setTimeout(() => void runQueue(), 50);
+    const retried = itemsRef.current.map((i) =>
+      i.status === 'failed' ? { ...i, status: 'queued' as const, error: undefined } : i,
+    );
+    setItems(retried);
+    setTimeout(() => void runQueue(retried), 0);
+  }
+
+  /** Cancels any running worker and empties the queue. */
+  function clearQueue() {
+    cancelRef.current = true;
+    pauseRef.current = false;
+    setRunState('idle');
+    setItems((prev) => {
+      prev.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
+      return [];
+    });
   }
 
   async function exportAll(selectedOnly: boolean): Promise<void> {
@@ -227,13 +264,16 @@ export function BatchPage() {
       .replace('{date}', timestampSlug());
   }
 
+  // Revoke preview URLs only when the page unmounts. Revoking on every `items`
+// change (the previous behaviour) killed thumbnails of already-finished items
+// as soon as the queue advanced.
   useEffect(() => {
     return () => {
-      items.forEach((item) => {
+      itemsRef.current.forEach((item) => {
         if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
       });
     };
-  }, [items]);
+  }, []);
 
   const stats = useMemo(
     () => ({
@@ -293,7 +333,13 @@ export function BatchPage() {
                 <button type="button" className="btn h-8 text-[11px]" onClick={() => folderRef.current?.click()}>
                   <FolderOpen size={12} /> {t('Folder')}
                 </button>
-                <button type="button" className="btn h-8 text-[11px]" onClick={() => { setItems([]); setRunState('idle'); }} disabled={!items.length}>
+                <button
+                  type="button"
+                  className="btn h-8 text-[11px]"
+                  onClick={clearQueue}
+                  disabled={!items.length}
+                  title={t('Stops the current batch and empties the queue')}
+                >
                   <Trash2 size={12} /> {t('Clear')}
                 </button>
               </div>

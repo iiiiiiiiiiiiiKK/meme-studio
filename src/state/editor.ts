@@ -330,6 +330,11 @@ export const useEditor = create<EditorState>((set, get) => ({
       // A project id is assigned by the caller before the first save.
       return;
     }
+    // Snapshot identities: every mutation replaces these references, so a
+    // reference check after the async write tells us whether the user kept
+    // editing while the save was in flight.
+    const savedLayers = state.layers;
+    const savedSettings = state.settings;
     set({ saving: true, saveError: null });
     try {
       let thumb: Blob | null = null;
@@ -356,7 +361,9 @@ export const useEditor = create<EditorState>((set, get) => ({
       const existing = await getProject(state.projectId);
       if (existing) project.createdAt = existing.createdAt;
       await saveProject(project);
-      set({ saving: false, dirty: false, lastSavedAt: Date.now() });
+      const current = get();
+      const unchanged = current.layers === savedLayers && current.settings === savedSettings;
+      set({ saving: false, dirty: unchanged ? false : current.dirty, lastSavedAt: Date.now() });
       const { useLibrary } = await import('./library');
       await useLibrary.getState().load();
     } catch (error) {

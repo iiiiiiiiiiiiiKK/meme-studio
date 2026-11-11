@@ -122,14 +122,24 @@ export async function renderScene(
   return canvas;
 }
 
+/**
+ * Renders one layer onto a transparent canvas of the scene size.
+ *
+ * The layer keeps its own opacity: exporting a single layer must reproduce what
+ * the user sees on the stage, not a fully opaque copy of it.
+ */
 export async function renderSingleLayer(layer: Layer, settings: CanvasSettings): Promise<HTMLCanvasElement> {
   const canvas = createCanvas(settings.width, settings.height);
   const ctx = ctx2d(canvas);
-  const clone: Layer = { ...layer, opacity: 1 };
-  if (clone.type === 'image') await drawImageLayer(ctx, clone);
-  else if (clone.type === 'text') drawTextLayer(ctx, clone);
-  else drawShapeLayer(ctx, clone);
+  if (layer.type === 'image') await drawImageLayer(ctx, layer);
+  else if (layer.type === 'text') drawTextLayer(ctx, layer);
+  else drawShapeLayer(ctx, layer);
   return canvas;
+}
+
+/** JPEG has no alpha channel, so a transparent canvas would be flattened anyway. */
+export function formatSupportsAlpha(format: ExportOptions['format']): boolean {
+  return format !== 'jpeg';
 }
 
 export function suggestExportName(projectName: string): string {

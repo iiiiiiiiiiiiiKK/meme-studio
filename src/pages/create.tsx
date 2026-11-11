@@ -74,7 +74,7 @@ const EMPTY_ANALYZE: AnalyzeState = {
 
 export function CreatePage() {
   const { t } = useI18n();
-  const { navigate, toast, setEngine } = useUi();
+  const { navigate, toast, setEngine, setCutout } = useUi();
   const [source, setSource] = useState<HTMLCanvasElement | null>(null);
   const [sourceName, setSourceName] = useState('image');
   const [analyze, setAnalyze] = useState<AnalyzeState>(EMPTY_ANALYZE);
@@ -129,6 +129,29 @@ export function CreatePage() {
   useEffect(() => {
     void recompute();
   }, [recompute]);
+
+  // Publish the current cutout settings so Templates can snapshot them, and
+  // apply a preset coming from the Templates page exactly once.
+  useEffect(() => {
+    setCutout({ mode, feather, expand, edgeSmooth, outline });
+  }, [mode, feather, expand, edgeSmooth, outline, setCutout]);
+
+  useEffect(() => {
+    const pending = useUi.getState().pendingPreset;
+    if (!pending || (pending.kind !== 'outline' && pending.kind !== 'extract')) return;
+    useUi.getState().setPendingPreset(null);
+    const p = pending.payload as Record<string, unknown>;
+    if (typeof p.mode === 'string') setMode(p.mode as CutMode);
+    if (typeof p.feather === 'number') setFeather(p.feather);
+    if (typeof p.expand === 'number') setExpand(p.expand);
+    if (typeof p.edgeSmooth === 'number') setEdgeSmooth(p.edgeSmooth);
+    if (p.outline && typeof p.outline === 'object') setOutline({ ...DEFAULT_OUTLINE, ...(p.outline as OutlineSettings) });
+    else if (typeof p.thickness === 'number' || typeof p.color === 'string') {
+      setOutline({ ...DEFAULT_OUTLINE, ...(p as Partial<OutlineSettings>) });
+    }
+    toast(t('Preset applied.'), 'success');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // paint the result preview
   useEffect(() => {
