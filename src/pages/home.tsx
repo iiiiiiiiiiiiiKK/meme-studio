@@ -288,6 +288,7 @@ export function ProjectCard({ project }: { project: { id: string; name: string; 
     <button
       type="button"
       onClick={() => void openProject(project.id)}
+      data-testid={`project-${project.id}`}
       className="group flex flex-col overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)] text-left transition-colors hover:border-[var(--text-faint)]"
     >
       <div className="checker-sm flex aspect-[4/3] items-center justify-center overflow-hidden">

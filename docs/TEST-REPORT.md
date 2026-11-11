@@ -50,7 +50,7 @@ The Canvas 2D API is provided by a purpose-written software rasteriser in `tests
 
 ```
 npx playwright test --project=desktop-chromium
-→ 18 passed
+→ 19 passed
 
 npx playwright test --project=mobile-webkit
 → 5 passed
@@ -72,6 +72,8 @@ The desktop project runs on a 1440×900 viewport, the mobile project runs in **W
 | `library.spec.ts` | asset management | A starter sticker is imported, searched, favourited, tagged and inspected in the detail dialog |
 | | upload → engine → save | An uploaded PNG goes through the local engine and reports the real matte source |
 | `mobile.spec.ts` | responsive layout | No horizontal scrolling at 390 px, the bottom tab bar navigates, the drawer opens and closes, the X link is reachable, the Discover grid stays inside the viewport |
+| `persistence.spec.ts` | project round-trip with a real image | A starter sticker is imported, opened in the editor through **My Space**, the project is saved, the page is reloaded, the project is reopened from Home and the image layer still has a live source (`naturalWidth > 0`) — this is the regression test for the dead-blob-URL bug |
+| `i18n.spec.ts` | language switch | Switching to 简体中文 persists across a reload and no raw dictionary keys leak into the DOM |
 
 ## 5. Production build
 
