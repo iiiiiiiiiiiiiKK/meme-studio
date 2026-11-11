@@ -150,7 +150,8 @@ export async function clearAllData(): Promise<void> {
   ]);
 }
 
-export async function exportBackup(): Promise<{ assets: number; projects: number; presets: number }> {
+/** Counts what is stored locally. This reports; it does not export a backup file. */
+export async function storageSummary(): Promise<{ assets: number; projects: number; presets: number }> {
   const [assets, projects, presets] = await Promise.all([listAssets(), listProjects(), listPresets()]);
   return { assets: assets.length, projects: projects.length, presets: presets.length };
 }

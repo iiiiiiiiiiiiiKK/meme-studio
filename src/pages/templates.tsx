@@ -424,6 +424,9 @@ export function TemplatesPage() {
                       type="button"
                       className="btn mt-2 h-8 w-full text-[11px]"
                       onClick={() => {
+                        // Same path as a built-in preset: hand the stored payload
+                        // to the page that owns those settings.
+                        setPendingPreset({ kind: preset.kind, payload: preset.payload, id: preset.id });
                         if (preset.kind === 'canvas') navigate('editor');
                         else if (preset.kind === 'batch') navigate('batch');
                         else navigate('create');

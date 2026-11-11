@@ -1,4 +1,5 @@
 import { createCanvas, ctx2d, canvasToBlob, makeThumbnail } from './image';
+import { roundedRectPath } from './render';
 
 /**
  * The starter pack is generated locally with Canvas so the community tab has
@@ -82,8 +83,7 @@ function textSticker(text: string, palette: string[], sizeRatio = 0.16) {
     const pad = size * 0.1;
     ctx.fillStyle = palette[0];
     ctx.beginPath();
-    ctx.roundRect(pad, size * 0.3, size - pad * 2, size * 0.4, size * 0.08);
-    ctx.fill();
+    roundedRectPath(ctx, pad, size * 0.3, size - pad * 2, size * 0.4, size * 0.08);    ctx.fill();
     ctx.fillStyle = palette[2];
     ctx.font = `800 ${size * sizeRatio}px Inter, sans-serif`;
     ctx.textAlign = 'center';

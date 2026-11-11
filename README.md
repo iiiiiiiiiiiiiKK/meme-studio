@@ -56,7 +56,7 @@ falls back to the WASM backend; without either, the clearly-labelled colour matt
 | `npm run build` | Type-check and produce the production bundle in `dist/` |
 | `npm run preview` | Serve the production bundle locally |
 | `npm test` | Vitest unit suite (57 tests) |
-| `npm run e2e` | Playwright suite (23 tests: desktop Chromium + mobile WebKit) |
+| `npm run e2e` | Playwright suite (24 tests: 19 desktop Chromium + 5 mobile WebKit) |
 | `npm run screenshots` | Regenerate the images in `docs/screenshots` |
 
 ### Environment variables
@@ -106,7 +106,7 @@ GitHub Pages is used by this project (`.github/workflows/deploy.yml`); the live 
 - **Head extraction quality depends on the source photo.** Strong backlight, hats, motion blur or a face smaller than
   ~40 px reduce quality; the Mask tab exists for that reason.
 - **WebGL is strongly recommended** — the WASM fallback is noticeably slower on large images.
-- **No cloud sync** and **no i18n** in this release.
+- **No cloud sync** in this release. The interface ships in **English and Simplified Chinese** and remembers the choice per browser.
 
 ### Documentation
 
@@ -168,8 +168,8 @@ WASM；两者都不可用时使用带明确标注的色彩蒙版。
 | --- | --- |
 | `npm run dev` | 启动开发服务器 |
 | `npm run build` | 类型检查并产出生产构建到 `dist/` |
-| `npm test` | 单元测试（44 个） |
-| `npm run e2e` | 端到端测试（23 个：桌面 Chromium + 移动端 WebKit） |
+| `npm test` | 单元测试（57 个） |
+| `npm run e2e` | 端到端测试（24 个：桌面 Chromium 19 + 移动端 WebKit 5） |
 | `npm run screenshots` | 重新生成 README 截图 |
 
 ### 环境变量

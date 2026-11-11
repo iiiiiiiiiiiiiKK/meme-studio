@@ -72,7 +72,7 @@ The desktop project runs on a 1440×900 viewport, the mobile project runs in **W
 | `library.spec.ts` | asset management | A starter sticker is imported, searched, favourited, tagged and inspected in the detail dialog |
 | | upload → engine → save | An uploaded PNG goes through the local engine and reports the real matte source |
 | `mobile.spec.ts` | responsive layout | No horizontal scrolling at 390 px, the bottom tab bar navigates, the drawer opens and closes, the X link is reachable, the Discover grid stays inside the viewport |
-| `persistence.spec.ts` | project round-trip with a real image | A starter sticker is imported, opened in the editor through **My Space**, the project is saved, the page is reloaded, the project is reopened from Home and the image layer still has a live source (`naturalWidth > 0`) — this is the regression test for the dead-blob-URL bug |
+| `persistence.spec.ts` | project round-trip with a real image | A starter sticker is imported, opened in the editor through **My Space**, the project is saved, the page is really reloaded (`page.reload()`, i.e. a new document), the project is reopened from Home, the image layer still paints (`naturalWidth > 0`) and its `src` is a **new** `blob:` URL — this is the regression test for the dead-blob-URL bug |
 | `i18n.spec.ts` | language switch | Switching to 简体中文 persists across a reload and no raw dictionary keys leak into the DOM |
 
 ## 5. Production build
@@ -84,7 +84,7 @@ dist/index.html                    1.25 kB │ gzip:   0.63 kB
 dist/assets/index-*.css           30.05 kB │ gzip:   6.65 kB
 dist/assets/hydrate-*.js           0.44 kB │ gzip:   0.29 kB
 dist/assets/matte-fallback-*.js    1.57 kB │ gzip:   0.85 kB
-dist/assets/index-*.js           215.20 kB │ gzip:  67.95 kB
+dist/assets/index-*.js           216.37 kB │ gzip:  68.24 kB
 dist/assets/vendor-*.js          276.64 kB │ gzip:  84.60 kB
 dist/assets/human-*.js         1,577.34 kB │ gzip: 422.84 kB
 ✓ built in ~15 s

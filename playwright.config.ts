@@ -1,6 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 4288;
+/**
+ * Port for the local preview server.
+ *
+ * It is overridable because Windows can reserve a port range (Hyper-V / WinNAT),
+ * which makes a hard-coded port fail with `EACCES` on an otherwise idle machine.
+ */
+export const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 4388);
 
 /**
  * Two real browser projects:

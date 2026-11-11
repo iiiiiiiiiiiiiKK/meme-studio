@@ -238,14 +238,13 @@ export function BatchPage() {
     });
   }
 
-  async function exportAll(selectedOnly: boolean): Promise<void> {
+  async function exportAll(): Promise<void> {
     const list = items.filter((i) => i.result && i.status === 'done');
     const selection = list;
     if (!selection.length) {
       toast(t('Nothing has been processed yet.'), 'info');
       return;
     }
-    void selectedOnly;
     const zip = new JSZip();
     for (const item of selection) {
       if (!item.result) continue;
@@ -386,7 +385,7 @@ export function BatchPage() {
                   ) : null}
                 </div>
                 <div className="ml-auto flex gap-1.5">
-                  <button type="button" className="btn h-8 text-[11px]" onClick={() => void exportAll(false)} disabled={!done.length}>
+                  <button type="button" className="btn h-8 text-[11px]" onClick={() => void exportAll()} disabled={!done.length}>
                     <FileArchive size={12} /> {t('Export ZIP')}
                   </button>
                 </div>

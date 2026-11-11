@@ -36,6 +36,7 @@ import { storeCanvasAsAsset } from '../state/library';
 import { renderScene, DEFAULT_EXPORT, formatSupportsAlpha, type ExportOptions } from '../lib/render';
 import { canvasToBlob, downloadBlob, formatBytes, makeThumbnail } from '../lib/image';
 import { loadImageElement } from '../lib/render';
+import { adoptAssetUrl } from '../lib/assetUrls';
 import { Modal, Slider, ColorField, Toggle, Segmented, Spinner } from '../components/ui';
 import { cx } from '../lib/cx';
 import type { Layer } from '../types';
@@ -107,18 +108,35 @@ export function EditorPage() {
     [t, toast],
   );
 
-  // Apply an "export" preset handed over from Templates, once.
+  // Apply an "export" or "canvas" preset handed over from Templates, once.
   useEffect(() => {
     const pendingPreset = useUi.getState().pendingPreset;
-    if (!pendingPreset || pendingPreset.kind !== 'export') return;
+    if (!pendingPreset) return;
+    if (pendingPreset.kind !== 'export' && pendingPreset.kind !== 'canvas') return;
     useUi.getState().setPendingPreset(null);
     const p = pendingPreset.payload as Record<string, unknown>;
-    setExportOptions((prev) => ({
-      ...prev,
-      format: p.format === 'png' || p.format === 'jpeg' || p.format === 'webp' ? p.format : prev.format,
-      scale: typeof p.scale === 'number' ? p.scale : prev.scale,
-      transparent: typeof p.transparent === 'boolean' ? p.transparent : prev.transparent,
-    }));
+    if (pendingPreset.kind === 'export') {
+      setExportOptions((prev) => ({
+        ...prev,
+        format: p.format === 'png' || p.format === 'jpeg' || p.format === 'webp' ? p.format : prev.format,
+        scale: typeof p.scale === 'number' ? p.scale : prev.scale,
+        transparent: typeof p.transparent === 'boolean' ? p.transparent : prev.transparent,
+      }));
+    } else {
+      const state = useEditor.getState();
+      if (!state.projectId) {
+        // Nothing to resize yet: fall through to the same message as below.
+        toast(t('The editor needs a project. Create one from an image, a blank canvas or a cutout first.'), 'info');
+        return;
+      }
+      state.setSettings({
+        width: typeof p.width === 'number' && p.width > 0 ? p.width : state.settings.width,
+        height: typeof p.height === 'number' && p.height > 0 ? p.height : state.settings.height,
+        background: typeof p.background === 'string' || p.background === null ? (p.background as string | null) : state.settings.background,
+        grid: typeof p.grid === 'boolean' ? p.grid : state.settings.grid,
+        snap: typeof p.snap === 'boolean' ? p.snap : state.settings.snap,
+      });
+    }
     toast(t('Preset applied.'), 'success');
   }, [t, toast]);
 
@@ -319,7 +337,13 @@ export function EditorPage() {
     }
     try {
       const url = URL.createObjectURL(file);
-      const img = await loadImageElement(url);
+      let img: HTMLImageElement;
+      try {
+        img = await loadImageElement(url);
+      } catch (error) {
+        URL.revokeObjectURL(url);
+        throw error;
+      }
       const state = useEditor.getState();
       const maxW = state.settings.width * 0.6;
       const maxH = state.settings.height * 0.6;
@@ -340,7 +364,9 @@ export function EditorPage() {
       );
       state.addLayer(
         createImageLayer({
-          src: url,
+          // Use the URL owned by the asset cache, not the throwaway upload URL,
+          // so deleting the asset can revoke exactly one URL.
+          src: adoptAssetUrl(asset.id, url),
           naturalWidth: img.naturalWidth,
           naturalHeight: img.naturalHeight,
           assetId: asset.id,

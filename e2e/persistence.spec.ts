@@ -27,20 +27,31 @@ test.describe('project persistence', () => {
 
     // Confirm the layer actually painted before the reload.
     await expect(page.locator('[data-layer-id]')).toHaveCount(1, { timeout: 20000 });
+    const srcBefore = await page.locator('[data-layer-id] img').first().getAttribute('src');
 
-    // Reload and reopen the same project from Home.
+    // A real reload creates a **new document**. Object URLs handed out by the
+    // previous document are revoked by the browser at that point, so any image
+    // that still renders afterwards must have been rebuilt from IndexedDB.
+    await page.reload({ waitUntil: 'networkidle' });
     await page.goto('/#/home');
+
     const projectCard = page.locator('[data-testid^="project-"]').first();
     await expect(projectCard).toBeVisible({ timeout: 20000 });
     await projectCard.click();
     await page.waitForSelector('[data-testid="editor-save"]', { timeout: 30000 });
 
-    // The image layer must still be there and must have a live (rebuildable) source.
+    // The image layer must still be there and must have a live (rebuilt) source.
     const layer = page.locator('[data-layer-id]').first();
     await expect(layer).toBeVisible({ timeout: 20000 });
     const img = layer.locator('img');
     await expect(img).toBeVisible({ timeout: 20000 });
     const natural = await img.evaluate((el: HTMLImageElement) => el.naturalWidth);
     expect(natural).toBeGreaterThan(0);
+
+    // The URL must be a *new* object URL: reusing the pre-reload one would mean
+    // the old document's URL survived, which is exactly the bug being tested.
+    const srcAfter = await img.getAttribute('src');
+    expect(srcAfter).toMatch(/^blob:/);
+    expect(srcAfter).not.toBe(srcBefore);
   });
 });

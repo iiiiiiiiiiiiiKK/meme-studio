@@ -67,6 +67,40 @@ export function drawTextLayer(ctx: CanvasRenderingContext2D, layer: Layer): void
   ctx.restore();
 }
 
+/**
+ * Draws a rounded rectangle without depending on `CanvasRenderingContext2D.roundRect`,
+ * which Safari only shipped in 16.4. Older engines get the same shape from arcs
+ * and lines, so a rounded shape layer never throws or silently disappears.
+ */
+export function roundedRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+): void {
+  const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, width, height, r);
+    return;
+  }
+  if (r <= 0) {
+    ctx.rect(x, y, width, height);
+    return;
+  }
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.arcTo(x + width, y, x + width, y + r, r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.arcTo(x + width, y + height, x + width - r, y + height, r);
+  ctx.lineTo(x + r, y + height);
+  ctx.arcTo(x, y + height, x, y + height - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
 export function drawShapeLayer(ctx: CanvasRenderingContext2D, layer: Layer): void {
   const shape = layer.shape;
   if (!shape) return;
@@ -82,7 +116,7 @@ export function drawShapeLayer(ctx: CanvasRenderingContext2D, layer: Layer): voi
   } else {
     const r = Math.min(shape.radius, layer.width / 2, layer.height / 2);
     ctx.beginPath();
-    ctx.roundRect(-layer.width / 2, -layer.height / 2, layer.width, layer.height, r);
+    roundedRectPath(ctx, -layer.width / 2, -layer.height / 2, layer.width, layer.height, r);
     ctx.fill();
   }
   ctx.restore();

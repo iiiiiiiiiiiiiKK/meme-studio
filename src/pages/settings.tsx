@@ -221,8 +221,8 @@ export function SettingsPage() {
               type="button"
               className="btn text-[11px]"
               onClick={async () => {
-                const { exportBackup } = await import('../lib/db');
-                const summary = await exportBackup();
+                const { storageSummary } = await import('../lib/db');
+                const summary = await storageSummary();
                 toast(
                   t('Local data summary: {assets} assets, {projects} projects, {presets} presets.', {
                     assets: summary.assets,
